@@ -73,7 +73,7 @@
       position: absolute;
       top: 0;
       bottom: 0;
-      left: calc(max(0px, (100vw - 1600px) / 2) + 303px);
+      left: calc(max(0px, (100vw - 1600px) / 2) + 263px);
       right: 280px;
       display: flex;
       align-items: center;
@@ -1130,9 +1130,9 @@
 
     #editor u,
     #editor span[style*="underline"] {
-      text-underline-offset: 4px;
+      text-underline-offset: 3px;
       text-decoration-thickness: 1.5px;
-      text-decoration-style: dashed;
+      text-decoration-style: solid;
     }
 
     #editor hr {
@@ -1218,6 +1218,23 @@
     }
 
     /* Premium Toggle Switch styling */
+      /* ---------- Compact layout: smaller text, tighter spacing ---------- */
+    html { font-size: 14px; }                       /* every rem-based size shrinks ~12% */
+    .sidebar { width: 240px; }
+    .sidebar-header { padding: 6px 8px; }
+    .category-control { margin-top: 3px; gap: 3px; }
+    .cat-trigger { height: 28px; font-size: 0.86rem; padding: 2px 8px; }
+    .icon-btn { width: 28px; height: 28px; }
+    #noteSearch { margin-top: 4px !important; padding: 3px 8px !important; font-size: 0.76rem !important; }
+    .notes-list { padding: 2px; }
+    .note-row { min-height: 22px; font-size: 0.86rem; gap: 8px; padding: 0 8px; }
+    .note-row .index-num { width: 20px; height: 20px; font-size: 0.64rem; }
+    .sidebar-footer { padding: 6px; gap: 5px; }
+    .sidebar-footer .btn { font-size: 0.74rem !important; padding: 4px 6px; }
+    .editor-area { padding: 6px; }
+    #editor { padding: 12px 20px; }
+    .status-bar { padding: 4px 12px; font-size: 0.68rem; }
+    #fabNewBtn { width: 34px; height: 34px; font-size: 20px; right: 18px; bottom: 38px; }
   </style>
 </head>
 
@@ -1259,8 +1276,8 @@
             </div>
             <select id="settingFontSize">
               <option value="12px">Small</option>
-              <option value="14px">Normal</option>
-              <option value="16px" selected>Default</option>
+              <option value="14px" selected>Default</option>
+              <option value="16px">Medium</option>
               <option value="18px">Large</option>
               <option value="20px">Extra Large</option>
               <option value="24px">Huge</option>
@@ -1274,8 +1291,8 @@
             <select id="settingLineHeight">
               <option value="1.0">Tight</option>
               <option value="1.2">Compact</option>
-              <option value="1.4">Normal</option>
-              <option value="1.6" selected>Comfortable</option>
+              <option value="1.4" selected>Normal</option>
+              <option value="1.6">Comfortable</option>
               <option value="1.8">Loose</option>
               <option value="2.0">Extra Loose</option>
               <option value="2.5">Double Space</option>
@@ -1364,8 +1381,10 @@
                 size="12"></i></button>
             <button id="redoBtn" class="btn btn-ghost fmt-btn" title="Redo (Ctrl+Y)"><i data-lucide="redo-2"
                 size="12"></i></button>
-            <button id="underlineBtn"class="btn btn-ghost" title="Underline selected text"><i data-lucide="underline"
-                size="12"></i></button>
+            <span class="split-btn" title="U = underline the selected text - swatch = choose the underline colour">
+              <button id="underlineBtn" class="btn btn-ghost fmt-btn" title="Underline selected text (click again to remove)"><i data-lucide="underline" size="12"></i></button>
+              <input type="color" id="ulColorInput" value="#e11d48" title="Choose underline colour">
+            </span>
             <button id="ulBtn" class="btn btn-ghost fmt-btn" title="Bullet list"><i data-lucide="list" size="12"></i></button>
             <button id="olBtn" class="btn btn-ghost fmt-btn" title="Numbered list"><i data-lucide="list-ordered" size="12"></i></button>
             <button id="alLeftBtn" class="btn btn-ghost fmt-btn" title="Align left"><i data-lucide="align-left" size="12"></i></button>
@@ -2297,8 +2316,14 @@
       // Settings application
       function applySettings() {
         const ff = storage.getItem(NOTES_PREFIX + 'fontFamily') || "'Lexend', sans-serif";
-        const fs = storage.getItem(NOTES_PREFIX + 'fontSize') || '16px';
-        const lh = storage.getItem(NOTES_PREFIX + 'lineHeight') || '1.6';
+        // one-time: the new compact defaults replace the old 16px / 1.6 (you can still pick any size afterwards)
+        if (!storage.getItem(NOTES_PREFIX + 'compactV1')) {
+          storage.removeItem(NOTES_PREFIX + 'fontSize');
+          storage.removeItem(NOTES_PREFIX + 'lineHeight');
+          storage.setItem(NOTES_PREFIX + 'compactV1', '1');
+        }
+        const fs = storage.getItem(NOTES_PREFIX + 'fontSize') || '14px';
+        const lh = storage.getItem(NOTES_PREFIX + 'lineHeight') || '1.4';
         const ww = storage.getItem(NOTES_PREFIX + 'wordWrap') !== 'false';
         editor.style.fontFamily = ff;
         editor.style.fontSize = fs;
@@ -2336,20 +2361,78 @@
       });
 
       resetFontSize.addEventListener('click', () => {
-        storage.setItem(NOTES_PREFIX + 'fontSize', '16px');
+        storage.setItem(NOTES_PREFIX + 'fontSize', '14px');
         applySettings();
       });
 
       resetLineHeight.addEventListener('click', () => {
-        storage.setItem(NOTES_PREFIX + 'lineHeight', '1.6');
+        storage.setItem(NOTES_PREFIX + 'lineHeight', '1.4');
         applySettings();
       });
 
       // Underline logic
-      underlineBtn.addEventListener('click', (e) => {
-        editor.focus();
-        document.execCommand('underline', false, null);
-      });
+      // Underline with its own colour: U applies / removes it, the swatch picks the colour
+      (function () {
+        const ulInput = document.getElementById('ulColorInput');
+        const KEY = 'notes_ulColor';
+        let chosen = null;                                   // null = plain underline (same colour as the text)
+        try { chosen = localStorage.getItem(KEY); } catch (e) { }
+        if (chosen) ulInput.value = chosen;
+
+        function cleanMarkers() { ['__ulA', '__ulB'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); }); }
+        // remove = true takes underlines away; otherwise every text piece gets an underline in `color`
+        function restyle(color, remove) {
+          const sel = window.getSelection();
+          if (!sel.rangeCount || sel.isCollapsed) return false;
+          const holder = document.createElement('div');
+          holder.appendChild(sel.getRangeAt(0).cloneContents());
+          holder.querySelectorAll('u').forEach(u => { while (u.firstChild) u.parentNode.insertBefore(u.firstChild, u); u.remove(); });
+          holder.querySelectorAll('[style]').forEach(el => {
+            el.style.textDecoration = ''; el.style.textDecorationLine = ''; el.style.textDecorationColor = '';
+            if (!el.getAttribute('style')) el.removeAttribute('style');
+          });
+          if (!remove) {
+            const w = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT);
+            const nodes = []; let n;
+            while ((n = w.nextNode())) nodes.push(n);
+            nodes.forEach(t => {
+              if (!/\S/.test(t.nodeValue)) return;
+              const sp = document.createElement('span');
+              sp.style.textDecoration = 'underline';
+              if (color) sp.style.textDecorationColor = color;
+              t.parentNode.insertBefore(sp, t); sp.appendChild(t);
+            });
+          }
+          const ok = document.execCommand('insertHTML', false,
+            '<span id="__ulA">&#8203;</span>' + holder.innerHTML + '<span id="__ulB">&#8203;</span>');
+          const A = document.getElementById('__ulA'), B = document.getElementById('__ulB');
+          if (A && B) { const r = document.createRange(); r.setStartAfter(A); r.setEndBefore(B); sel.removeAllRanges(); sel.addRange(r); }
+          cleanMarkers();
+          sel.collapseToEnd();                                // so the result is visible at once
+          return ok;
+        }
+        function restoreSelection() {
+          editor.focus();
+          const sel = window.getSelection();
+          if ((!sel.rangeCount || sel.isCollapsed) && savedRange && !savedRange.collapsed) { sel.removeAllRanges(); sel.addRange(savedRange); }
+        }
+
+        underlineBtn.addEventListener('click', () => {
+          restoreSelection();
+          const sel = window.getSelection();
+          if (!sel.rangeCount || sel.isCollapsed) { document.execCommand('underline', false, null); return; }   // typing mode
+          const already = document.queryCommandState('underline');
+          restyle(chosen, already);
+        });
+
+        let t;
+        ulInput.addEventListener('input', e => {
+          chosen = e.target.value;
+          try { localStorage.setItem(KEY, chosen); } catch (err) { }
+          clearTimeout(t);
+          t = setTimeout(() => { restoreSelection(); if (!window.getSelection().isCollapsed) restyle(chosen, false); }, 350);
+        });
+      })();
 
       // Keep the editor selection when clicking formatting buttons
       document.querySelectorAll('.fmt-btn').forEach(b =>
@@ -2961,7 +3044,7 @@
         const wasNewNote = (selectedNoteIndex === null);
 
         if (!selectedCategory) { if (!isAutoSaveFromNew) alert('Please select a category first.'); return false; }
-        const content = editor.innerHTML.replace(/\u200b/g, '').replace(/<span id="__sz[AB]"><\/span>/g, '');
+        const content = editor.innerHTML.replace(/\u200b/g, '').replace(/<span id="__(sz|ul)[AB]"><\/span>/g, '');
         if (!editor.innerText.trim() && !content.includes('<hr')) return false;
 
         const now = new Date().toISOString();

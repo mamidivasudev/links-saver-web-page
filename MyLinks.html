@@ -662,6 +662,21 @@
       body.dark-mode .category h3 { color: var(--cat-d, #d4d4d4); border-bottom: 2px solid var(--cat-d, #3c3c3c); }
       body.dark-mode .category:hover { border-color: var(--cat-d, #0e639c); }
       body.dark-mode .category li a:hover { color: var(--cat-d, #3794ff); }
+
+      /* saved logins */
+      #credRow { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr auto; gap: 6px; align-items: center; }
+      #credRow[hidden] { display: none; }
+      input[type="password"] { padding: 4px 8px; border-radius: 6px; border: 1px solid rgba(0,0,0,0.15); background: rgba(255,255,255,0.9); font-family: inherit; font-size: 0.78rem; width: 100%; }
+      body.dark-mode input[type="password"] { background: #3c3c3c; border-color: #3c3c3c; color: #cccccc; }
+      body.dark-mode input[type="password"]:focus { border-color: #007fd4; outline: none; }
+      .cred-key { background: transparent; border: none; padding: 2px; cursor: pointer; color: #d19a00; opacity: .85; display: flex; align-items: center; }
+      .cred-key:hover { opacity: 1; transform: scale(1.12); }
+      .cred-key svg { width: 13px; height: 13px; }
+      body.dark-mode .cred-key { color: #dcdcaa; }
+      .nm-body input[type="text"], .nm-body input[type="password"] { box-sizing: border-box; }
+
+      .eye-btn { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); background: transparent; border: none; padding: 4px; cursor: pointer; color: inherit; opacity: .65; display: flex; align-items: center; }
+      .eye-btn:hover { opacity: 1; }
     </style>
   </head>
   <body>
@@ -723,6 +738,12 @@
         <input type="text" id="category-name" placeholder="New Category Name" />
         <input type="text" id="link-name" placeholder="Link Title" />
         <input type="text" id="link-url" placeholder="URL (https://...)" />
+        <button type="button" id="credToggle" class="btn-icon" title="Add a username and password to this link" style="width:auto;padding:0 8px;gap:4px;font-size:.78rem;"><i data-lucide="key-round" size="14"></i> Login</button>
+        <div id="credRow" hidden>
+          <input type="text" id="link-username" placeholder="Username (optional)" autocomplete="off" />
+          <input type="password" id="link-password" placeholder="Password (optional)" autocomplete="new-password" />
+          <button type="button" class="btn-icon" id="credShow" title="Show password" style="width:30px;padding:0;justify-content:center;"></button>
+        </div>
         
         <button class="btn-primary" onclick="addNewLink()" style="padding: 8px 16px; font-size: 0.85rem;">
           <i data-lucide="plus-circle" size="16"></i> Save Link
@@ -1353,13 +1374,17 @@
             const viewBtn = document.createElement("button");
             viewBtn.className = "menu-item";
             viewBtn.innerHTML = '<i data-lucide="eye" size="12"></i> View';
-            viewBtn.onclick = () => {
-              if (confirm(`Link URL:\n${link.url}\n\nCopy to clipboard?`)) {
-                navigator.clipboard.writeText(link.url).then(() => {
-                  showToast("Link copied to clipboard!");
-                });
-              }
-            };
+            viewBtn.onclick = () => openLinkDetails(category, index);
+
+            const copyUserBtn = document.createElement("button");
+            copyUserBtn.className = "menu-item";
+            copyUserBtn.innerHTML = '<i data-lucide="user" size="12"></i> Copy username';
+            copyUserBtn.onclick = () => copyText(link.username, 'Username');
+
+            const copyPassBtn = document.createElement("button");
+            copyPassBtn.className = "menu-item";
+            copyPassBtn.innerHTML = '<i data-lucide="key-round" size="12"></i> Copy password';
+            copyPassBtn.onclick = () => copyText(link.password, 'Password');
 
             const editBtn = document.createElement("button");
             editBtn.className = "menu-item";
@@ -1382,6 +1407,8 @@
             copyBtn.onclick = () => chooseCategoryFor('copy', category, index);
 
             dropdown.appendChild(viewBtn);
+            if (link.username) dropdown.appendChild(copyUserBtn);
+            if (link.password) dropdown.appendChild(copyPassBtn);
             dropdown.appendChild(editBtn);
             dropdown.appendChild(moveBtn);
             dropdown.appendChild(copyBtn);
@@ -1391,6 +1418,14 @@
             menuContainer.appendChild(dropdown);
 
             li.appendChild(a);
+            if (link.username || link.password) {
+              const key = document.createElement("button");
+              key.className = "cred-key";
+              key.title = "Saved login - click to view / copy";
+              key.innerHTML = '<i data-lucide="key-round" size="12"></i>';
+              key.onclick = (e) => { e.stopPropagation(); openLinkDetails(category, index); };
+              li.appendChild(key);
+            }
             li.appendChild(menuContainer);
             ul.appendChild(li);
           });
@@ -1578,6 +1613,168 @@
         syncLinksToFile();
       }
 
+      // ---------- Saved logins: copy, view, edit ----------
+      const EYE_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg>';
+      const EYE_OFF_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"/><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"/><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"/><line x1="2" x2="22" y1="2" y2="22"/></svg>';
+      // puts an eye button inside a password box: click to show / hide what is typed
+      function addEye(input) {
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'position:relative;width:100%;';
+        input.parentNode.insertBefore(wrap, input);
+        wrap.appendChild(input);
+        input.style.paddingRight = '34px';
+        const b = document.createElement('button');
+        b.type = 'button'; b.className = 'eye-btn'; b.title = 'Show password'; b.innerHTML = EYE_SVG;
+        b.onclick = () => {
+          const hide = input.type === 'password';
+          input.type = hide ? 'text' : 'password';
+          b.innerHTML = hide ? EYE_OFF_SVG : EYE_SVG;
+          b.title = hide ? 'Hide password' : 'Show password';
+        };
+        wrap.appendChild(b);
+        return b;
+      }
+      function copyText(text, label) {
+        if (!text) return;
+        const done = () => showToast('✓ ' + label + ' copied');
+        const fallback = () => {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+          document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); done(); } catch (e) { showToast('Copy failed'); }
+          ta.remove();
+        };
+        if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done).catch(fallback);
+        else fallback();
+      }
+
+      function makeLinksModal(titleText, width) {
+        closeLinksModal();
+        const ov = document.createElement('div');
+        ov.id = 'nmOverlay'; ov.className = 'nm-overlay';
+        const box = document.createElement('div'); box.className = 'nm-box'; box.style.width = width || 'min(480px, 92vw)';
+        const head = document.createElement('div'); head.className = 'nm-head';
+        const t = document.createElement('span'); t.textContent = titleText;
+        t.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px;';
+        const x = document.createElement('button'); x.className = 'nm-btn'; x.textContent = '✕'; x.onclick = closeLinksModal;
+        head.appendChild(t); head.appendChild(x);
+        const body = document.createElement('div'); body.className = 'nm-body';
+        box.appendChild(head); box.appendChild(body); ov.appendChild(box);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) closeLinksModal(); });
+        document.body.appendChild(ov);
+        const onKey = e => { if (e.key === 'Escape') { closeLinksModal(); document.removeEventListener('keydown', onKey, true); } };
+        document.addEventListener('keydown', onKey, true);
+        return body;
+      }
+      const smallBtn = (label, fn) => { const b = document.createElement('button'); b.className = 'nm-btn'; b.textContent = label; b.onclick = fn; return b; };
+
+      function openLinkDetails(category, index) {
+        const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        const link = (all[category] || [])[index];
+        if (!link) return;
+        const body = makeLinksModal(link.name || 'Link', 'min(500px, 92vw)');
+
+        function row(label, value, buttons, mono) {
+          const r = document.createElement('div'); r.className = 'nm-row';
+          const info = document.createElement('div'); info.className = 'info';
+          const u = document.createElement('div'); u.className = 'u'; u.textContent = label;
+          const v = document.createElement('div'); v.className = 't'; v.style.cssText = 'font-weight:500;' + (mono ? 'font-family:Consolas,monospace;' : '');
+          v.textContent = value;
+          info.appendChild(u); info.appendChild(v); r.appendChild(info);
+          (buttons || []).forEach(b => r.appendChild(b));
+          body.appendChild(r);
+          return v;
+        }
+        row('Category', category);
+        row('URL', link.url, [
+          smallBtn('Open', () => { window.open(/^\s*javascript:/i.test(link.url) ? '#' : link.url, '_blank', 'noopener'); }),
+          smallBtn('Copy', () => copyText(link.url, 'URL'))
+        ], true);
+        if (link.username) row('Username', link.username, [smallBtn('Copy', () => copyText(link.username, 'Username'))], true);
+        if (link.password) {
+          let shown = false;
+          const masked = '•'.repeat(Math.min(link.password.length, 14));
+          const tog = smallBtn('', () => { shown = !shown; v.textContent = shown ? link.password : masked; tog.innerHTML = shown ? EYE_OFF_SVG : EYE_SVG; tog.title = shown ? 'Hide password' : 'Show password'; });
+          tog.innerHTML = EYE_SVG; tog.title = 'Show password'; tog.style.display = 'flex'; tog.style.alignItems = 'center';
+          const v = row('Password', masked, [tog, smallBtn('Copy', () => copyText(link.password, 'Password'))], true);
+        }
+        if (!link.username && !link.password) {
+          const n = document.createElement('div'); n.style.cssText = 'opacity:.65;margin-top:8px;font-size:.8rem;';
+          n.textContent = 'No username or password saved for this link. Use Edit to add them.';
+          body.appendChild(n);
+        }
+        const foot = document.createElement('div'); foot.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:12px;';
+        foot.appendChild(smallBtn('Edit', () => openLinkEditor(category, index)));
+        foot.appendChild(smallBtn('Close', closeLinksModal));
+        body.appendChild(foot);
+      }
+
+      function openLinkEditor(category, index) {
+        const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        const link = (all[category] || [])[index];
+        if (!link) return;
+        const body = makeLinksModal('Edit link', 'min(500px, 92vw)');
+        const field = (label, type, value, extra) => {
+          const w = document.createElement('div'); w.style.cssText = 'margin-bottom:8px;';
+          const l = document.createElement('div'); l.textContent = label; l.style.cssText = 'font-size:.72rem;opacity:.7;margin-bottom:2px;';
+          const i = document.createElement('input'); i.type = type; i.value = value || ''; i.autocomplete = type === 'password' ? 'new-password' : 'off';
+          i.style.width = '100%';
+          if (extra) extra(i);
+          w.appendChild(l); w.appendChild(i); body.appendChild(w);
+          return i;
+        };
+        const iName = field('Title', 'text', link.name);
+        const iUrl = field('URL', 'text', link.url);
+        const iCat = field('Category (pick an existing one or type a new name)', 'text', category, i => { i.setAttribute('list', 'edCatList'); });
+        const dl = document.createElement('datalist'); dl.id = 'edCatList';
+        Object.keys(all).forEach(c => { const o = document.createElement('option'); o.value = c; dl.appendChild(o); });
+        body.appendChild(dl);
+        const iUser = field('Username (optional)', 'text', link.username);
+        const iPass = field('Password (optional)', 'password', link.password);
+        addEye(iPass);
+
+        const foot = document.createElement('div'); foot.style.cssText = 'display:flex;justify-content:flex-end;gap:8px;margin-top:6px;';
+        const save = () => {
+          const nn = iName.value.trim(), nu = iUrl.value.trim(), nc = iCat.value.trim();
+          if (!nn || !nu || !nc) { alert('Title, URL and category are required.'); return; }
+          const data = JSON.parse(localStorage.getItem("customCategories")) || {};
+          const cur = (data[category] || [])[index];
+          if (!cur) { closeLinksModal(); return; }
+          const updated = Object.assign({}, cur, { name: nn, url: nu });
+          const u = iUser.value.trim(), pw = iPass.value;
+          if (u) updated.username = u; else delete updated.username;
+          if (pw) updated.password = pw; else delete updated.password;
+          if (nc !== category) {
+            if (!data[nc]) data[nc] = [];
+            data[nc].push(updated);
+            data[category].splice(index, 1);
+            if (data[category].length === 0) delete data[category];
+          } else {
+            data[category][index] = updated;
+          }
+          localStorage.setItem("customCategories", JSON.stringify(data));
+          localStorage.setItem("backup_customCategories", JSON.stringify(data));
+          closeLinksModal();
+          loadLinks(document.getElementById("category-select").value || null);
+          syncLinksToFile();
+          showToast('✓ Link updated');
+        };
+        foot.appendChild(smallBtn('Cancel', closeLinksModal));
+        const sb = smallBtn('Save', save); sb.style.cssText = 'background:#0e639c;color:#fff;border-color:#0e639c;';
+        foot.appendChild(sb);
+        body.appendChild(foot);
+        body.addEventListener('keydown', e => { if (e.key === 'Enter') save(); });
+        iName.focus();
+      }
+
+      // the Login button in the header form shows / hides the username + password fields
+      (function () {
+        const tog = document.getElementById('credToggle'), row = document.getElementById('credRow'), show = document.getElementById('credShow'), pw = document.getElementById('link-password');
+        tog.addEventListener('click', () => { row.hidden = !row.hidden; if (!row.hidden) document.getElementById('link-username').focus(); });
+        show.innerHTML = EYE_SVG;
+        show.addEventListener('click', () => { const hide = pw.type === 'password'; pw.type = hide ? 'text' : 'password'; show.innerHTML = hide ? EYE_OFF_SVG : EYE_SVG; show.title = hide ? 'Hide password' : 'Show password'; });
+      })();
+
       function handleDragStart(e, category, index) {
         dragged.category = category;
         dragged.index = index;
@@ -1681,10 +1878,17 @@
         const customCategories = JSON.parse(localStorage.getItem("customCategories")) || {};
         if (!customCategories[categoryName]) customCategories[categoryName] = [];
 
-        customCategories[categoryName].push({ name: linkName, url: linkURL });
+        const linkUser = document.getElementById("link-username").value.trim();
+        const linkPass = document.getElementById("link-password").value;
+        const newLink = { name: linkName, url: linkURL };
+        if (linkUser) newLink.username = linkUser;
+        if (linkPass) newLink.password = linkPass;
+        customCategories[categoryName].push(newLink);
         localStorage.setItem("customCategories", JSON.stringify(customCategories));
         localStorage.setItem("backup_customCategories", JSON.stringify(customCategories));
 
+        document.getElementById("link-username").value = "";
+        document.getElementById("link-password").value = "";
         document.getElementById("category-name").value = "";
         document.getElementById("link-name").value = "";
         document.getElementById("link-url").value = "";
@@ -1748,28 +1952,7 @@ function triggerImport() {
         syncLinksToFile();
       }
 
-      function editLink(category, index) {
-        const customCategories = JSON.parse(localStorage.getItem("customCategories")) || {};
-        const link = customCategories[category][index];
-        const newName = prompt("Edit Link Name:", link.name);
-        const newURL = prompt("Edit Link URL:", link.url);
-        const newCategory = prompt("Edit Category:", category);
-
-        if (newName && newURL && newCategory) {
-          if (newCategory !== category) {
-            if (!customCategories[newCategory]) customCategories[newCategory] = [];
-            customCategories[newCategory].push({ name: newName, url: newURL });
-            customCategories[category].splice(index, 1);
-            if (customCategories[category].length === 0) delete customCategories[category];
-          } else {
-            customCategories[category][index] = { name: newName, url: newURL };
-          }
-
-          localStorage.setItem("customCategories", JSON.stringify(customCategories));
-          loadLinks();
-          syncLinksToFile();
-        }
-      }
+      function editLink(category, index) { openLinkEditor(category, index); }
 
       function exportToJSON() {
   const data = localStorage.getItem("customCategories");
