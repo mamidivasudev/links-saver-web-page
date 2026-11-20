@@ -1235,6 +1235,27 @@
     #editor { padding: 12px 20px; }
     .status-bar { padding: 4px 12px; font-size: 0.68rem; }
     #fabNewBtn { width: 34px; height: 34px; font-size: 20px; right: 18px; bottom: 38px; }
+      /* ---------- Category dropdown + right-click menus: compact, and readable in dark mode ---------- */
+    .cat-item { padding: 6px 10px; font-size: 0.86rem; gap: 8px; }
+    .cat-item-actions button { width: 24px; height: 24px; }
+    .cat-item-actions button svg { width: 14px; height: 14px; }
+    .ctx-item { padding: 5px 10px; font-size: 0.84rem; }
+    html[data-theme="dark"] .cat-menu { background: #252526; border-color: #454545; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    html[data-theme="dark"] .cat-menu::-webkit-scrollbar-track { background: #252526; }
+    html[data-theme="dark"] .cat-menu::-webkit-scrollbar-thumb { background: #424242; border-color: #252526; }
+    html[data-theme="dark"] .cat-item, html[data-theme="dark"] .cat-item .cat-item-name { color: #cccccc; }
+    html[data-theme="dark"] .cat-item:hover { background: #04395e; color: #ffffff; }
+    html[data-theme="dark"] .cat-item:hover .cat-item-name { color: #ffffff; }
+    html[data-theme="dark"] .cat-item.selected { background: #37373d; color: #75beff; }
+    html[data-theme="dark"] .cat-item.selected .cat-item-name { color: #75beff; }
+    html[data-theme="dark"] .cat-item-actions { opacity: .65; }
+    html[data-theme="dark"] .cat-item-actions button:hover { background: rgba(255,255,255,.12); }
+    html[data-theme="dark"] .cat-item-actions button.danger-hover:hover { color: #f48771; background: rgba(244,135,113,.16); }
+    html[data-theme="dark"] .cat-menu-footer { background: #252526 !important; border-top-color: #3c3c3c !important; }
+    html[data-theme="dark"] .ctx-menu { background: #252526; border-color: #454545; box-shadow: 0 8px 24px rgba(0,0,0,.5); }
+    html[data-theme="dark"] .ctx-item { color: #cccccc; }
+    html[data-theme="dark"] .ctx-item:hover { background: #04395e; color: #ffffff; }
+    html[data-theme="dark"] .ctx-item.danger:hover { background: rgba(244,135,113,.16); color: #f48771; }
   </style>
 </head>
 
@@ -2068,8 +2089,10 @@
               }
             });
           } else {
-            nameEl.addEventListener('click', () => {
-              if (c !== selectedCategory && !confirmLeaveNote()) return;
+            // the WHOLE row is clickable (not only the text), so edges and padding never swallow a click
+            item.addEventListener('click', () => {
+              if (c === selectedCategory) { closeCatMenu(); return; }   // already open: just close the list, keep your note
+              if (!confirmLeaveNote()) return;
               setCategoryTrigger(c);
               selectedNoteIndex = null;
               isBulkMode = false;
