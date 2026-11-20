@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Favorite Links</title>
-    <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+    <script src="vendor/lucide.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -946,6 +946,20 @@
         fileSynced = true;
       }
 
+      // ---- Desktop app bridge: inside the Windows app, files are read/written directly (no browser folder picker) ----
+      const NFS = (() => { try { return window.nativeFS || (window.parent !== window && window.parent.nativeFS) || null; } catch (e) { return null; } })();
+      const appPrompt = (m, d) => (NFS && NFS.prompt) ? NFS.prompt(m, d) : window.prompt(m, d);
+      function nativeFileHandle(name) {
+        let buf = '';
+        return {
+          name, kind: 'file',
+          queryPermission: async () => 'granted',
+          requestPermission: async () => 'granted',
+          getFile: async () => ({ text: async () => await NFS.read(name) }),
+          createWritable: async () => ({ write: async (t) => { buf += t; }, close: async () => { await NFS.write(name, buf); buf = ''; } })
+        };
+      }
+
       // Handles saved by My Notes (same browser storage): its folder, and a file inside it.
       // Used to open the SAME Sync_data folder without wandering through Windows folders.
       async function getNotesHandles() {
@@ -970,6 +984,7 @@
       getNotesHandles().then(h => { notesHandlesCache = h; });
 
       async function pickFolder() {
+        if (NFS) { await NFS.chooseFolder(); return; }          // desktop app: normal folder dialog
         if (!window.showDirectoryPicker) { alert('Folder sync needs Chrome or Edge.'); return; }
         let step = 'start';
         try {
@@ -1032,6 +1047,15 @@
       }
 
       async function initFileHandle() {
+        if (NFS) {                                               // desktop app: links live inside notes_data.json
+          sharedMode = true; localStorage.setItem('links_mode', 'notesfile');
+          localStorage.setItem('myNotes.syncFolderName', NFS.folderName);
+          linksHandle = nativeFileHandle('notes_data.json'); linksPerm = 'granted';
+          updateFileStatus();
+          // a moment after My Notes has read the same file, so the two never write it at the same instant
+          setTimeout(async () => { try { await loadFromFile(linksHandle); } catch (e) { console.warn('Load failed', e); } }, 900);
+          return;
+        }
         const h = sharedMode ? (await getNotesHandles()).file : await _getHandle();
         linksHandle = h;
         if (!h) { updateFileStatus(); return; }
@@ -1298,7 +1322,7 @@
           editBtn.className = "menu-item";
           editBtn.innerHTML = '<i data-lucide="edit-2" size="12"></i> Edit';
           editBtn.onclick = () => {
-            const newName = prompt("Edit category name:", category);
+            const newName = appPrompt("Edit category name:", category);
             if (newName && newName !== category) {
               const all = JSON.parse(localStorage.getItem("customCategories")) || {};
               if (all[newName]) return alert("Category already exists.");

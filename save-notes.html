@@ -11,7 +11,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&family=Lexend:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
-  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
+  <script src="vendor/lucide.min.js"></script>
   <style>
     :root {
       --primary: #1d63d2;
@@ -1867,7 +1867,22 @@
         catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Sync failed — file is not valid JSON?'); } }
       }
 
+      // ---- Desktop app bridge: inside the Windows app, files are read/written directly (no browser folder picker) ----
+      const NFS = (() => { try { return window.nativeFS || (window.parent !== window && window.parent.nativeFS) || null; } catch (e) { return null; } })();
+      const appPrompt = (m, d) => (NFS && NFS.prompt) ? NFS.prompt(m, d) : window.prompt(m, d);
+      function nativeFileHandle(name) {
+        let buf = '';
+        return {
+          name, kind: 'file',
+          queryPermission: async () => 'granted',
+          requestPermission: async () => 'granted',
+          getFile: async () => ({ text: async () => await NFS.read(name) }),
+          createWritable: async () => ({ write: async (t) => { buf += t; }, close: async () => { await NFS.write(name, buf); buf = ''; } })
+        };
+      }
+
       async function openNotesFile() {
+        if (NFS) { await NFS.chooseFolder(); return; }          // desktop app: normal folder dialog
         if (!window.showDirectoryPicker) { alert('Directory Picker not supported in this browser. Use Chrome or Edge.'); return; }
         try {
           const dirHandle = await window.showDirectoryPicker({ id: 'myNotesSync', mode: 'readwrite' });
@@ -1883,6 +1898,13 @@
       }
 
       async function initFileHandle() {
+        if (NFS) {                                               // desktop app: read the sync folder directly
+          fileHandle = nativeFileHandle('notes_data.json'); filePerm = 'granted';
+          storage.setItem(NOTES_PREFIX + 'syncFolderName', NFS.folderName);
+          updateFileStatus();
+          try { await loadAndMerge(fileHandle, true); } catch (e) { console.warn('Load from file failed', e); }
+          return;
+        }
         const h = await _getHandle();
         if (!h) { updateFileStatus(); return; }
         fileHandle = h;
@@ -2863,7 +2885,7 @@
 
       // Category actions
       btnAddCat.addEventListener('click', () => {
-        const name = prompt('Enter new category name:');
+        const name = appPrompt('Enter new category name:');
         if (!name) return;
         const n = name.trim(); if (!n) return;
         if (categories.includes(n)) { alert('Category already exists'); return; }
@@ -3092,7 +3114,7 @@
           showToast('✓ Note updated');
         } else {
           // --- NEW NOTE: determine name ---
-          const namePrompt = prompt('Enter note name:');
+          const namePrompt = appPrompt('Enter note name:');
           if (namePrompt === null) return false; // Abort saving if user clicks Cancel
           const tt = namePrompt.toString().trim();
 

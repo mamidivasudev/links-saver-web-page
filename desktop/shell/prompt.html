@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Links &amp; Notes</title>
+  <style>
+    html, body { margin: 0; height: 100%; background: #252526; color: #cccccc; font-family: 'Segoe UI', system-ui, sans-serif; }
+    .wrap { padding: 18px 20px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; gap: 12px; }
+    #msg { font-size: 14px; line-height: 1.4; white-space: pre-wrap; }
+    input { width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 14px; background: #3c3c3c; color: #cccccc; border: 1px solid #3c3c3c; border-radius: 6px; outline: none; font-family: inherit; }
+    input:focus { border-color: #007fd4; }
+    .btns { margin-top: auto; display: flex; justify-content: flex-end; gap: 8px; }
+    button { padding: 6px 18px; font-size: 13px; border-radius: 6px; border: 1px solid #454545; background: #2d2d2d; color: #cccccc; cursor: pointer; font-family: inherit; }
+    button.ok { background: #0e639c; border-color: #0e639c; color: #fff; }
+    button:hover { filter: brightness(1.15); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div id="msg"></div>
+    <input id="val" type="text" autocomplete="off" spellcheck="false">
+    <div class="btns"><button id="cancel">Cancel</button><button id="ok" class="ok">OK</button></div>
+  </div>
+  <script>
+    const q = new URLSearchParams(location.search);
+    const id = q.get('id');
+    document.getElementById('msg').textContent = q.get('m') || '';
+    const inp = document.getElementById('val');
+    inp.value = q.get('d') || '';
+    inp.focus(); inp.select();
+    const done = v => { try { nativeFS.promptResult(id, v); } catch (e) { } };
+    document.getElementById('ok').onclick = () => done(inp.value);
+    document.getElementById('cancel').onclick = () => done(null);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') done(inp.value); if (e.key === 'Escape') done(null); });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') done(null); });
+  </script>
+</body>
+</html>

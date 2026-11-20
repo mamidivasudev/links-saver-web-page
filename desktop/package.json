@@ -1,0 +1,16 @@
+{
+  "name": "links-and-notes",
+  "productName": "Links & Notes",
+  "version": "1.0.0",
+  "description": "My Favorite Links and My Notes in one Windows app",
+  "main": "main.js",
+  "scripts": {
+    "prestart": "node build.js",
+    "start": "electron .",
+    "build": "node build.js && electron-packager . LinksAndNotes --platform=win32 --arch=x64 --out=dist --overwrite --icon=icon.ico --ignore=\"(^/dist|^/shell|^/build\\.js|^/icon\\.png)\" --win32metadata.ProductName=\"Links & Notes\" --win32metadata.FileDescription=\"Links & Notes\""
+  },
+  "devDependencies": {
+    "electron": "28.3.3",
+    "@electron/packager": "^18.3.6"
+  }
+}
