@@ -916,6 +916,40 @@
       cursor: pointer;
     }
 
+    kbd {
+      display: inline-block;
+      padding: 0 5px;
+      font-family: inherit;
+      font-size: 0.68rem;
+      line-height: 1.5;
+      border: 1px solid var(--border);
+      border-bottom-width: 2px;
+      border-radius: 4px;
+      background: var(--bg-card);
+      color: var(--text-main);
+    }
+
+    .shortcuts-box {
+      padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      font-size: 0.68rem;
+      line-height: 1.9;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .shortcuts-box .sc-title {
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      font-size: 0.64rem;
+      margin-bottom: 2px;
+    }
+
+    .sidebar-footer { flex-wrap: wrap; }
+    .sidebar-footer .btn { flex: 1 1 40% !important; }
+    .sc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .sc-row:last-child { border-bottom: none; }
+
     /* Toolbar hover highlight */
     .toolbar-actions .btn,
     .toolbar-actions select {
@@ -1141,7 +1175,7 @@
     <div id="appBarTitle" title=""></div>
     <div class="header-actions" style="display:flex;align-items:center;gap:6px;">
       <span id="fileStatus"
-        style="font-size:0.68rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        style="font-size:0.82rem;font-weight:700;letter-spacing:.1px;color:var(--text-muted);max-width:340px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
         title="">No file</span>
       <button id="openFileBtn" title="Pick Folder for Sync"><i data-lucide="folder-open"></i></button>
       <button id="syncBtn" title="Sync Notes to File"><i data-lucide="refresh-cw"></i></button>
@@ -1243,6 +1277,12 @@
         <button id="btnImport" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:0.8rem;">
           <i data-lucide="upload" size="12"></i> Import
         </button>
+        <button id="btnShortcuts" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:0.8rem;" title="Keyboard shortcuts">
+          <i data-lucide="keyboard" size="12"></i> Shortcuts
+        </button>
+        <button id="btnTrash" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:0.8rem;" title="Deleted notes - restore them here">
+          <i data-lucide="trash" size="12"></i> <span id="trashLabel">Trash</span>
+        </button>
         <input id="importFile" type="file" accept=".json,.txt,text/plain,application/json" style="display:none"
           multiple />
       </div>
@@ -1267,7 +1307,7 @@
                 <span class="slider"></span>
               </span>
             </label>
-            <button id="copyNoteBtn" class="btn btn-ghost" title="Copy note"><i data-lucide="copy" size="12"></i><span class="lbl"> Copy</span></button>
+            <button id="copyNoteBtn" class="btn btn-ghost" title="Copy whole note  (Alt+Click on a line copies just that line / value)"><i data-lucide="copy" size="12"></i><span class="lbl"> Copy</span></button>
             <button id="previewBtn" class="btn btn-ghost" title="Preview"><i data-lucide="eye" size="12"></i><span class="lbl"> Preview</span></button>
             <button id="undoBtn" class="btn btn-ghost fmt-btn" title="Undo (Ctrl+Z)"><i data-lucide="undo-2"
                 size="12"></i></button>
@@ -1335,8 +1375,8 @@
         </div>
 
 
-        <div class="status-bar">
-          Last saved: <span id="lastSaved">—</span>
+        <div class="status-bar" style="display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;">
+          <span>Last saved: <span id="lastSaved">—</span></span></span>
         </div>
       </div>
     </main>
@@ -1393,6 +1433,7 @@
               console.warn("Storage write failed", e);
             }
           }
+          this.failed = true;
           this.memory[key] = String(value);
         },
         removeItem(key) {
@@ -1627,8 +1668,9 @@
           fileStatusEl.textContent = 'No file'; fileStatusEl.style.color = 'var(--text-muted)';
           fileStatusEl.title = 'Click the folder button to pick your sync folder';
         } else if (filePerm === 'granted') {
-          fileStatusEl.textContent = '📄 ' + fileHandle.name; fileStatusEl.style.color = 'var(--success)';
-          fileStatusEl.title = fileHandle.name + ' (connected)';
+          const folder = storage.getItem(NOTES_PREFIX + 'syncFolderName');
+          fileStatusEl.textContent = '📄 ' + (folder ? folder + ' / ' : '') + fileHandle.name; fileStatusEl.style.color = 'var(--success)';
+          fileStatusEl.title = (folder ? folder + ' / ' : '') + fileHandle.name + ' (connected) - click to open the folder, Shift+click to change its path';
         } else {
           fileStatusEl.textContent = '⚠ Click 🔄 to reconnect'; fileStatusEl.style.color = '#d97706';
           fileStatusEl.title = 'Browser needs permission again to read/write ' + fileHandle.name;
@@ -1652,7 +1694,7 @@
 
       async function writeFileData(h) {
         const w = await h.createWritable();
-        await w.write(JSON.stringify({ categories, notesData }, null, 2));
+        await w.write(JSON.stringify({ categories, notesData, deleted: tomb }, null, 2));
         await w.close();
       }
 
@@ -1684,13 +1726,27 @@
         if (!fileData) { await writeFileData(h); showToast('✓ ' + h.name + ' created'); return; }
         const localJson = JSON.stringify({ categories, notesData });
         const fileJson = JSON.stringify({ categories: fileData.categories, notesData: fileData.notesData });
+        const curId = (selectedCategory && selectedNoteIndex !== null)
+          ? ((notesData[selectedCategory] || [])[selectedNoteIndex] || {}).id : null;
         const merged = mergeData(fileData, { categories, notesData });
+        // apply deletion markers from both sides (a note edited after its deletion survives)
+        Object.keys(fileData.deleted || {}).forEach(k => { if (!tomb[k] || fileData.deleted[k] > tomb[k]) tomb[k] = fileData.deleted[k]; });
+        Object.keys(merged.notesData).forEach(c => {
+          merged.notesData[c] = merged.notesData[c].filter(n => !(n.id && tomb[n.id] && (n.updatedAt || '') <= tomb[n.id]));
+        });
+        saveTomb();
         const mergedJson = JSON.stringify(merged);
         if (mergedJson !== localJson) {
           categories = merged.categories; notesData = merged.notesData;
-          saveStorage(); updateCategoryDropdown();
+          saveStorage(); updateCategoryDropdown(true);
+          // keep what you are editing, but re-find its position in the merged list
+          if (curId) {
+            const i = (notesData[selectedCategory] || []).findIndex(n => n.id === curId);
+            selectedNoteIndex = i >= 0 ? i : null;
+          }
+          renderNotesList(); updateBreadcrumb();
         }
-        if (mergedJson !== fileJson) await writeFileData(h);
+        if (mergedJson !== fileJson || JSON.stringify(fileData.deleted || {}) !== JSON.stringify(tomb)) await writeFileData(h);
         if (!quiet || mergedJson !== localJson) showToast('✓ Synced with ' + h.name);
       }
 
@@ -1758,14 +1814,40 @@
       let selectedNoteIndex = null;
 
       const uid = () => Math.random().toString(36).slice(2, 9);
-      const saveStorage = () => { 
-        try { 
-          storage.setItem(CATS_KEY, JSON.stringify(categories)); 
-          storage.setItem(NOTES_KEY, JSON.stringify(notesData)); 
+      const saveStorage = () => {
+        storage.failed = false;
+        try {
+          storage.setItem(CATS_KEY, JSON.stringify(categories));
+          storage.setItem(NOTES_KEY, JSON.stringify(notesData));
         } catch (e) {
-          console.warn("Browser LocalStorage is full (5MB limit reached). Saving safely directly to sync file instead!", e);
+          storage.failed = true;
+        }
+        if (storage.failed && (!saveStorage.warnedAt || Date.now() - saveStorage.warnedAt > 60000)) {
+          saveStorage.warnedAt = Date.now();
+          setTimeout(() => alert('WARNING: your notes could NOT be saved in the browser (storage full or blocked).\n\nClick Export (left panel) now to keep a copy, and connect a sync file with the folder icon.'), 0);
         }
       };
+
+      // ---- Trash (soft delete) + deletion markers so synced files cannot resurrect deleted notes ----
+      const TRASH_KEY = NOTES_PREFIX + 'trash';
+      const TOMB_KEY = NOTES_PREFIX + 'deleted';
+      let trash = [];
+      try { trash = JSON.parse(storage.getItem(TRASH_KEY)) || []; } catch (e) { trash = []; }
+      let tomb = {};
+      try { tomb = JSON.parse(storage.getItem(TOMB_KEY)) || {}; } catch (e) { tomb = {}; }
+      const saveTrash = () => storage.setItem(TRASH_KEY, JSON.stringify(trash));
+      const saveTomb = () => storage.setItem(TOMB_KEY, JSON.stringify(tomb));
+      function trashNotes(cat, notes) {
+        const now = new Date().toISOString();
+        (notes || []).forEach(n => {
+          if (!n) return;
+          trash.push({ cat, note: n, deletedAt: now });
+          if (n.id) tomb[n.id] = now;
+        });
+        if (trash.length > 60) trash = trash.slice(trash.length - 60);
+        saveTrash(); saveTomb();
+        try { refreshTrashBtn(); } catch (e) { }
+      }
 
       // --- helper: escape + linkify ---
       function escapeHtml(str) {
@@ -1908,6 +1990,7 @@
             });
           } else {
             nameEl.addEventListener('click', () => {
+              if (c !== selectedCategory && !confirmLeaveNote()) return;
               setCategoryTrigger(c);
               selectedNoteIndex = null;
               isBulkMode = false;
@@ -2100,7 +2183,8 @@
       }
 
       function deleteCategory(catName) {
-        if (!confirm(`Delete category "${catName}" and all its notes?`)) return;
+        if (!confirm(`Delete category "${catName}" and all its notes?\n(Notes go to Trash and can be restored.)`)) return;
+        trashNotes(catName, notesData[catName] || []);
         categories = categories.filter(x => x !== catName);
         delete notesData[catName];
 
@@ -2118,13 +2202,14 @@
         showToast('✓ Category deleted');
       }
 
-      function updateCategoryDropdown() {
+      function updateCategoryDropdown(keepEditor = false) {
         const last = storage.getItem(LASTCAT_KEY);
         if (last && categories.includes(last)) setCategoryTrigger(last);
         else if (categories.length) setCategoryTrigger(categories[0]);
         else setCategoryTrigger(null);
         buildCatMenu();
-        renderNotesList(); clearEditor();
+        renderNotesList();
+        if (!keepEditor) clearEditor();
       }
 
       // Toggle dropdown open/close
@@ -2419,6 +2504,11 @@
         }
       });
 
+      // Warn before closing / reloading the tab while there are unsaved edits
+      window.addEventListener('beforeunload', e => {
+        if (hasUnsavedChanges()) { e.preventDefault(); e.returnValue = ''; }
+      });
+
       // ---------- Dark mode ----------
       const settingDark = document.getElementById('settingDark');
       settingDark.checked = document.documentElement.getAttribute('data-theme') === 'dark';
@@ -2599,6 +2689,7 @@
         if (count === 0 || !confirm(`Delete ${count} selected notes?`)) return;
         let arr = notesData[selectedCategory] || [];
         const toDelete = Array.from(selectedNotes).sort((a, b) => b - a);
+        trashNotes(selectedCategory, toDelete.map(i => arr[i]).filter(Boolean));
         toDelete.forEach(idx => arr.splice(idx, 1));
         notesData[selectedCategory] = arr;
         selectedNoteIndex = null;
@@ -2618,14 +2709,18 @@
       // HTML of the open note as last loaded/saved, used to detect unsaved edits
       let openedHtml = '';
       function hasUnsavedChanges() {
-        if (selectedNoteIndex === null || !selectedCategory) return false;
+        if (!selectedCategory) return false;
+        if (selectedNoteIndex === null) return !!editor.innerText.trim(); // new note typed but never saved
         const stored = ((notesData[selectedCategory] || [])[selectedNoteIndex] || {}).content;
         return editor.innerHTML !== openedHtml && editor.innerHTML !== stored;
       }
       // Returns true if it's OK to leave the current note (saved, or nothing to save)
       function confirmLeaveNote() {
         if (!hasUnsavedChanges()) return true;
-        if (!confirm('You have unsaved changes. Do you want to update this note before leaving?\n\nOK = Save & continue\nCancel = Stay on this note')) return false;
+        const msg = selectedNoteIndex === null
+          ? 'This new note is not saved yet. Save it before leaving?\n\nOK = Save & continue\nCancel = Stay here'
+          : 'You have unsaved changes. Do you want to update this note before leaving?\n\nOK = Save & continue\nCancel = Stay on this note';
+        if (!confirm(msg)) return false;
         return saveCurrentNote(false, true) !== false;
       }
 
@@ -2664,8 +2759,14 @@
             return false;
           }
           if (!skipConfirm && !confirm('Save changes to this note?')) return false;
-          notesData[selectedCategory][selectedNoteIndex].content = content;
-          notesData[selectedCategory][selectedNoteIndex].updatedAt = now;
+          const cur = notesData[selectedCategory][selectedNoteIndex];
+          if (cur.content && cur.content.length < 60000) {
+            cur.history = cur.history || [];
+            cur.history.unshift({ content: cur.content, savedAt: cur.updatedAt || now });
+            cur.history = cur.history.slice(0, 5);
+          }
+          cur.content = content;
+          cur.updatedAt = now;
           showToast('✓ Note updated');
         } else {
           // --- NEW NOTE: determine name ---
@@ -2689,6 +2790,7 @@
 
         saveStorage();
         openedHtml = editor.innerHTML;
+        maybeDailyBackup();
         lastSaved.textContent = new Date().toLocaleString();
         renderNotesList();
         // File sync (prompts for path on first save if none selected)
@@ -2721,6 +2823,7 @@
       function deleteNoteByIndex(index) {
         if (!selectedCategory) return;
         const arr = notesData[selectedCategory] || [];
+        trashNotes(selectedCategory, [arr[index]]);
         arr.splice(index, 1);
         notesData[selectedCategory] = arr;
         saveStorage();
@@ -2837,6 +2940,11 @@
           menu.classList.remove('open');
         };
 
+        const histItem = document.createElement('div');
+        histItem.className = 'ctx-item';
+        histItem.innerHTML = '<i data-lucide="history" size="12"></i> Version history';
+        histItem.onclick = () => { menu.classList.remove('open'); openHistory(index); };
+
         const selectMul = document.createElement('div');
         selectMul.className = 'ctx-item';
         selectMul.innerHTML = '<i data-lucide="check-square" size="12"></i> Select Multiple';
@@ -2862,6 +2970,7 @@
 
         menu.appendChild(edit);
         menu.appendChild(pinItem);
+        menu.appendChild(histItem);
         menu.appendChild(selectMul);
         menu.appendChild(del);
 
@@ -2950,6 +3059,189 @@
       });
       deleteNoteBtn.addEventListener('click', () => { if (selectedNoteIndex === null) return; if (confirm('Delete currently open note?')) deleteNoteByIndex(selectedNoteIndex); });
 
+      // ---------- Generic modal ----------
+      function closeModal() { const o = document.getElementById('nmOverlay'); if (o) o.remove(); }
+      function openModal(title, content) {
+        closeModal();
+        const ov = document.createElement('div');
+        ov.id = 'nmOverlay';
+        ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.5);z-index:3000;display:flex;align-items:center;justify-content:center;';
+        const box = document.createElement('div');
+        box.style.cssText = 'background:var(--bg-card);color:var(--text-main);border:1px solid var(--border);border-radius:10px;width:min(600px,92vw);max-height:80vh;display:flex;flex-direction:column;box-shadow:var(--shadow-lg);';
+        const head = document.createElement('div');
+        head.style.cssText = 'display:flex;justify-content:space-between;align-items:center;padding:10px 14px;border-bottom:1px solid var(--border);font-weight:600;';
+        head.textContent = title;
+        const x = document.createElement('button');
+        x.textContent = '✕';
+        x.className = 'btn btn-ghost';
+        x.onclick = closeModal;
+        head.appendChild(x);
+        const body = document.createElement('div');
+        body.style.cssText = 'padding:10px 14px;overflow:auto;font-size:0.88rem;';
+        body.appendChild(content);
+        box.appendChild(head); box.appendChild(body);
+        ov.appendChild(box);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) closeModal(); });
+        document.body.appendChild(ov);
+        const onKey = e => { if (e.key === 'Escape') { closeModal(); document.removeEventListener('keydown', onKey, true); } };
+        document.addEventListener('keydown', onKey, true);
+      }
+      const fmtWhen = iso => { const d = new Date(iso); return isNaN(d) ? '' : d.toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }); };
+      function modalRow(left, buttons) {
+        const row = document.createElement('div');
+        row.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);';
+        const info = document.createElement('div');
+        info.style.cssText = 'flex:1;min-width:0;';
+        info.appendChild(left);
+        row.appendChild(info);
+        buttons.forEach(b => row.appendChild(b));
+        return row;
+      }
+      function modalBtn(label, fn, danger) {
+        const b = document.createElement('button');
+        b.className = 'btn btn-ghost';
+        b.textContent = label;
+        if (danger) b.style.color = 'var(--danger)';
+        b.onclick = fn;
+        return b;
+      }
+      const twoLine = (a, b) => {
+        const d = document.createElement('div');
+        const t = document.createElement('div'); t.style.cssText = 'font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; t.textContent = a;
+        const u = document.createElement('div'); u.style.cssText = 'font-size:0.74rem;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;'; u.textContent = b;
+        d.appendChild(t); d.appendChild(u);
+        return d;
+      };
+
+      // Hide the "Last saved" bar until the open note actually has a saved time
+      (function () {
+        const lsEl = document.getElementById('lastSaved');
+        const bar = lsEl.closest('.status-bar');
+        const sync = () => { bar.style.display = (/^[\s—-]*$/.test(lsEl.textContent)) ? 'none' : 'flex'; };
+        new MutationObserver(sync).observe(lsEl, { childList: true, characterData: true, subtree: true });
+        sync();
+      })();
+
+      // ---------- Shortcuts list (opens on click) ----------
+      document.getElementById('btnShortcuts').addEventListener('click', () => {
+        const rows = [
+          ['<kbd>Alt</kbd> + Click', 'Copy that line (value after “:”)'],
+          ['<kbd>Ctrl</kbd> + Click', 'Open a link'],
+          ['<kbd>Ctrl</kbd> + <kbd>S</kbd>', 'Save / Update note'],
+          ['<kbd>Ctrl</kbd> + <kbd>N</kbd>', 'New note'],
+          ['<kbd>Ctrl</kbd> + <kbd>K</kbd>', 'Search all notes'],
+          ['<kbd>Ctrl</kbd> + <kbd>F</kbd> / <kbd>H</kbd>', 'Find & replace'],
+          ['<kbd>Ctrl</kbd> + <kbd>B</kbd> / <kbd>I</kbd> / <kbd>U</kbd>', 'Bold / Italic / Underline'],
+          ['<kbd>Ctrl</kbd> + <kbd>Z</kbd> / <kbd>Y</kbd>', 'Undo / Redo'],
+          ['<kbd>Shift</kbd> + Click pen', 'Remove highlight'],
+          ['<kbd>Esc</kbd>', 'Close search / find / dialogs']
+        ];
+        const wrap = document.createElement('div');
+        rows.forEach(([k, d]) => {
+          const r = document.createElement('div');
+          r.className = 'sc-row';
+          const a = document.createElement('span'); a.innerHTML = k;
+          const b = document.createElement('span'); b.textContent = d; b.style.color = 'var(--text-muted)';
+          r.appendChild(a); r.appendChild(b);
+          wrap.appendChild(r);
+        });
+        openModal('Keyboard shortcuts', wrap);
+      });
+
+      // ---------- Trash ----------
+      function refreshTrashBtn() {
+        const l = document.getElementById('trashLabel');
+        if (l) l.textContent = trash.length ? 'Trash (' + trash.length + ')' : 'Trash';
+      }
+      function restoreFromTrash(i) {
+        const e = trash[i];
+        if (!e) return;
+        if (!categories.includes(e.cat)) categories.push(e.cat);
+        notesData[e.cat] = notesData[e.cat] || [];
+        e.note.updatedAt = new Date().toISOString(); // newer than its deletion marker, so sync keeps it
+        if (e.note.id) delete tomb[e.note.id];
+        notesData[e.cat].push(e.note);
+        trash.splice(i, 1);
+        saveStorage(); saveTrash(); saveTomb();
+        buildCatMenu(); renderNotesList(); refreshTrashBtn();
+        syncToFile().catch(() => { });
+        showToast('✓ Restored to ' + e.cat);
+      }
+      function openTrash() {
+        const wrap = document.createElement('div');
+        function render() {
+          wrap.innerHTML = '';
+          if (!trash.length) { wrap.textContent = 'Trash is empty.'; return; }
+          const top = document.createElement('div');
+          top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;color:var(--text-muted);font-size:0.78rem;';
+          top.textContent = 'Last ' + trash.length + ' deleted notes (oldest are dropped after 60)';
+          top.appendChild(modalBtn('Empty trash', () => { if (confirm('Permanently delete everything in Trash?')) { trash = []; saveTrash(); refreshTrashBtn(); render(); } }, true));
+          wrap.appendChild(top);
+          for (let i = trash.length - 1; i >= 0; i--) {
+            const e = trash[i];
+            wrap.appendChild(modalRow(
+              twoLine(noteDisplayTitle(e.note), e.cat + ' · deleted ' + fmtWhen(e.deletedAt)),
+              [modalBtn('Restore', () => { restoreFromTrash(i); render(); }),
+               modalBtn('Delete forever', () => { trash.splice(i, 1); saveTrash(); refreshTrashBtn(); render(); }, true)]
+            ));
+          }
+        }
+        render();
+        openModal('Trash', wrap);
+      }
+      document.getElementById('btnTrash').addEventListener('click', openTrash);
+      refreshTrashBtn();
+
+      // ---------- Version history ----------
+      function openHistory(index) {
+        const note = (notesData[selectedCategory] || [])[index];
+        if (!note) return;
+        const wrap = document.createElement('div');
+        function render() {
+          wrap.innerHTML = '';
+          const h = note.history || [];
+          if (!h.length) { wrap.textContent = 'No earlier versions yet. A version is kept each time you Update this note (last 5).'; return; }
+          h.forEach((v, i) => {
+            wrap.appendChild(modalRow(
+              twoLine(fmtWhen(v.savedAt), stripHtml(v.content || '').replace(/\s+/g, ' ').slice(0, 110)),
+              [modalBtn('Restore', () => {
+                if (!confirm('Restore this version? The current text is kept in history.')) return;
+                note.history.unshift({ content: note.content, savedAt: note.updatedAt || new Date().toISOString() });
+                note.content = v.content;
+                note.updatedAt = new Date().toISOString();
+                note.history = note.history.filter((x, k) => k !== i + 1).slice(0, 5);
+                saveStorage(); syncToFile().catch(() => { });
+                if (selectedNoteIndex === index) { editor.innerHTML = sanitizeHtml(note.content || ''); openedHtml = editor.innerHTML; }
+                renderNotesList(); closeModal(); showToast('✓ Version restored');
+              })]
+            ));
+          });
+        }
+        render();
+        openModal('Version history - ' + noteDisplayTitle(note), wrap);
+      }
+
+      // ---------- Backups: automatic daily download + before risky actions ----------
+      function downloadBackup(tag) {
+        try {
+          const day = new Date().toISOString().slice(0, 10);
+          const blob = new Blob([JSON.stringify({ categories, notesData, deleted: tomb, trash }, null, 2)], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = 'notes_backup_' + day + (tag ? '_' + tag : '') + '.json';
+          document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url);
+        } catch (e) { console.warn('backup failed', e); }
+      }
+      function maybeDailyBackup() {
+        try {
+          const day = new Date().toISOString().slice(0, 10);
+          if (localStorage.getItem('notes_lastBackupDay') === day) return;
+          localStorage.setItem('notes_lastBackupDay', day);
+          downloadBackup('auto');
+          showToast('✓ Daily backup saved to your Downloads folder');
+        } catch (e) { }
+      }
+
       // Export/Import
       btnExport.addEventListener('click', () => {
         const data = { categories, notesData };
@@ -2984,7 +3276,8 @@
             try {
               const parsed = JSON.parse(ev.target.result);
               if (parsed.categories && parsed.notesData) {
-                if (!confirm('This will overwrite all current notes. Continue?')) return;
+                if (!confirm('This will overwrite all current notes. Continue?\n(A backup of your current notes is downloaded first.)')) return;
+                downloadBackup('before_import');
                 categories = parsed.categories;
                 notesData = parsed.notesData;
                 saveStorage();
@@ -3091,11 +3384,28 @@
 
       // File button handlers
       openFileBtn.addEventListener('click', () => openNotesFile());
+      // Click the file name to open its folder in a new tab (browsers hide the real path, so you give it once)
+      fileStatusEl.style.cursor = 'pointer';
+      fileStatusEl.addEventListener('mouseenter', () => { fileStatusEl.style.textDecoration = 'underline'; });
+      fileStatusEl.addEventListener('mouseleave', () => { fileStatusEl.style.textDecoration = ''; });
+      fileStatusEl.addEventListener('click', e => {
+        if (!fileHandle) { openNotesFile(); return; }
+        const KEY = NOTES_PREFIX + 'syncFolderPath';
+        let path = storage.getItem(KEY);
+        if (!path || e.shiftKey) {
+          const v = prompt('Type the full path of your sync folder (asked once).\nExample: D:\\Sync_data\nTip: Shift+Click the name later to change it.', path || '');
+          if (!v || !v.trim()) return;
+          path = v.trim().replace(/^"|"$/g, '');
+          storage.setItem(KEY, path);
+        }
+        window.open('file:///' + encodeURI(path.replace(/\\/g, '/')), '_blank');
+      });
       syncBtn.addEventListener('click', () => syncFromFile());
 
       // init
       init();
       initFileHandle();
+      setTimeout(() => { if (!fileHandle) showToast('⚠ No sync file connected - click the folder icon to keep a backup file'); }, 3000);
       applySettings();
       try { document.execCommand('styleWithCSS', false, false); } catch (e) { }
       updateBreadcrumb();
