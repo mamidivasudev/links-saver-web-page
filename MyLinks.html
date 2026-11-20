@@ -572,6 +572,96 @@
         background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700;
         display: flex; align-items: center; justify-content: center;
       }
+
+      /* category drag & drop */
+      .category.cat-dragging { opacity: 0.45; }
+      .category.cat-drag-before { box-shadow: inset 4px 0 0 var(--primary); }
+      .category.cat-drag-after { box-shadow: inset -4px 0 0 var(--primary); }
+
+      /* category list with drag-to-reorder */
+      #catOrderMenu { position: fixed; z-index: 2000; max-height: calc(100vh - 80px); overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; background: #fff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,.25); padding: 4px; }
+      #catOrderMenu[hidden] { display: none; }
+      body.dark-mode #catOrderMenu { background: #1e293b; color: #f1f5f9; border-color: #334155; }
+      #catOrderMenu .co-hint { font-size: .68rem; opacity: .65; padding: 2px 8px 4px; white-space: nowrap; }
+      #catOrderMenu::-webkit-scrollbar { display: none; width: 0; height: 0; }
+      #catOrderMenu .co-item { display: flex; align-items: center; gap: 8px; padding: 3px 8px; border-radius: 5px; cursor: pointer; font-size: .8rem; line-height: 1.25; white-space: nowrap; }
+      #catOrderMenu .co-item:hover { background: rgba(79,70,229,.14); }
+      #catOrderMenu .co-item.sel { background: var(--primary); color: #fff; }
+      #catOrderMenu .co-handle { cursor: grab; opacity: .6; }
+      #catOrderMenu .co-drag { opacity: .4; }
+      #catOrderMenu .co-before { box-shadow: inset 0 3px 0 var(--primary); }
+      #catOrderMenu .co-after { box-shadow: inset 0 -3px 0 var(--primary); }
+
+      /* ---------- Tighter link rows: more links visible ---------- */
+      .category { padding: 6px 8px; }
+      .category h3 { margin: 0 0 4px 0; padding-bottom: 4px; min-height: 22px; font-size: 0.95rem; }
+      .category li { padding: 0 4px; }
+      .category li a { font-size: 0.82rem; line-height: 1.2; padding: 3px 0; }
+      .li-btn { padding: 2px; }
+      .li-btn svg { width: 14px; height: 14px; }
+      .category h3 .li-btn svg { width: 15px; height: 15px; }
+
+      /* ---------- Dark mode: softer, easier-on-the-eyes accent (instead of the vivid blue) ---------- */
+      body.dark-mode .category h3 { color: #c7d2fe; border-bottom-color: rgba(165, 180, 252, 0.28); }
+      body.dark-mode .category:hover { border-color: rgba(165, 180, 252, 0.45); box-shadow: 0 8px 22px rgba(0,0,0,0.35); }
+      body.dark-mode .category { border-color: rgba(148, 163, 184, 0.16); }
+      body.dark-mode .category li:hover { background: rgba(165, 180, 252, 0.08); }
+      body.dark-mode .btn-primary { background: #3c4a82; color: #e8ecff; }
+      body.dark-mode .btn-primary:hover { background: #4a5a9c; box-shadow: 0 4px 14px rgba(0,0,0,0.35); }
+      body.dark-mode .nav-btn:hover, body.dark-mode .btn-icon:hover { border-color: rgba(165,180,252,0.6); background: rgba(165,180,252,0.14); color: #e8ecff; transform: none; }
+      body.dark-mode input:focus, body.dark-mode select:focus { border-color: #8b9cf4; box-shadow: 0 0 0 3px rgba(139,156,244,0.15); }
+      body.dark-mode .logo-section h2 { background: linear-gradient(to right, #a5b4fc, #f0abfc); -webkit-background-clip: text; background-clip: text; }
+      body.dark-mode #catOrderMenu .co-item.sel { background: #3c4a82; }
+      body.dark-mode #catOrderMenu .co-before { box-shadow: inset 0 3px 0 #a5b4fc; }
+      body.dark-mode #catOrderMenu .co-after { box-shadow: inset 0 -3px 0 #a5b4fc; }
+      body.dark-mode .category.cat-drag-before { box-shadow: inset 4px 0 0 #a5b4fc; }
+      body.dark-mode .category.cat-drag-after { box-shadow: inset -4px 0 0 #a5b4fc; }
+      body.dark-mode .nm-btn:hover { border-color: #a5b4fc; color: #c7d2fe; }
+
+      /* ---------- Dark mode in the VS Code "Dark+" palette (neutral charcoal, one calm blue) ---------- */
+      body.dark-mode {
+        --bg-dark: #1e1e1e; --card-dark: #252526; --text-dark: #cccccc; --border-dark: #3c3c3c;
+        background: #1e1e1e;
+        background-image: none;
+        color: #cccccc;
+      }
+      body.dark-mode .header-container { background: #252526; border-bottom: 1px solid #3c3c3c; box-shadow: 0 2px 10px rgba(0,0,0,.35); }
+      body.dark-mode .category { background: #252526; border-color: #3c3c3c; box-shadow: none; }
+      body.dark-mode .category:hover { border-color: #0e639c; box-shadow: none; }
+      body.dark-mode .category h3 { color: #d4d4d4; border-bottom: 1px solid #3c3c3c; }
+      body.dark-mode .category li { border-bottom-color: #2d2d2d; }
+      body.dark-mode .category li:hover { background: #2a2d2e; }
+      body.dark-mode .category li a { color: #cccccc; }
+      body.dark-mode .category li a:hover { color: #3794ff; }
+      body.dark-mode .nav-btn, body.dark-mode .btn-icon { background: #2d2d2d; border-color: #3c3c3c; color: #cccccc; }
+      body.dark-mode .nav-btn:hover, body.dark-mode .btn-icon:hover { background: #37373d; border-color: #0e639c; color: #ffffff; }
+      body.dark-mode .btn-primary { background: #0e639c; color: #ffffff; }
+      body.dark-mode .btn-primary:hover { background: #1177bb; }
+      body.dark-mode input[type="text"], body.dark-mode select { background: #3c3c3c; border-color: #3c3c3c; color: #cccccc; }
+      body.dark-mode input[type="text"]::placeholder { color: #8c8c8c; }
+      body.dark-mode input:focus, body.dark-mode select:focus { border-color: #007fd4; box-shadow: none; }
+      body.dark-mode .menu-dropdown { background: #252526; border-color: #454545; }
+      body.dark-mode .menu-item:hover { background: #04395e; }
+      body.dark-mode .logo-section h2 { background: none; -webkit-text-fill-color: #cccccc; color: #cccccc; }
+      body.dark-mode .theme-toggle { background: #3c3c3c; }
+      body.dark-mode .theme-ball { background: #1e1e1e; }
+      body.dark-mode .action-item span { color: #9d9d9d; }
+      body.dark-mode #catOrderMenu, body.dark-mode .nm-box { background: #252526; border-color: #454545; color: #cccccc; }
+      body.dark-mode #catOrderMenu .co-item:hover { background: #2a2d2e; }
+      body.dark-mode #catOrderMenu .co-item.sel { background: #04395e; color: #ffffff; }
+      body.dark-mode #catOrderMenu .co-before { box-shadow: inset 0 3px 0 #3794ff; }
+      body.dark-mode #catOrderMenu .co-after { box-shadow: inset 0 -3px 0 #3794ff; }
+      body.dark-mode .category.cat-drag-before { box-shadow: inset 4px 0 0 #3794ff; }
+      body.dark-mode .category.cat-drag-after { box-shadow: inset -4px 0 0 #3794ff; }
+      body.dark-mode .nm-btn { border-color: #454545; color: #cccccc; }
+      body.dark-mode .nm-btn:hover { border-color: #3794ff; color: #3794ff; }
+
+      /* ---------- Coloured category headings ---------- */
+      .category h3 { color: var(--cat-l, var(--primary)); border-bottom: 2px solid var(--cat-l, var(--primary)); }
+      .category:hover { border-color: var(--cat-l, var(--primary)); }
+      body.dark-mode .category h3 { color: var(--cat-d, #d4d4d4); border-bottom: 2px solid var(--cat-d, #3c3c3c); }
+      body.dark-mode .category:hover { border-color: var(--cat-d, #0e639c); }
+      body.dark-mode .category li a:hover { color: var(--cat-d, #3794ff); }
     </style>
   </head>
   <body>
@@ -683,6 +773,7 @@
 
       let deletedBackup = null;
       let dragged = { category: null, index: null };
+      let draggedCat = null;   // category card being dragged to a new position
 
       // ── Server API Sync (Replaces File System API) ──────────────
       
@@ -1105,10 +1196,60 @@
           const categoryDiv = document.createElement("div");
           categoryDiv.className = "category";
           categoryDiv.dataset.category = category;
+          {
+            const DARK = ['#4fc1ff', '#4ec9b0', '#dcdcaa', '#ce9178', '#c586c0', '#9cdcfe', '#b5cea8', '#d7ba7d', '#569cd6', '#f48771', '#c3e88d', '#82aaff'];
+            const LIGHT = ['#0e7ac4', '#0f9b83', '#9a7b00', '#c4572d', '#a43fa0', '#2872b8', '#3f8f32', '#a86a00', '#2563c9', '#d6452a', '#5a9a1f', '#3b5bdb'];
+            // each category keeps its own colour; new ones get the least-used colour so neighbours differ
+            let cmap = {};
+            try { cmap = JSON.parse(localStorage.getItem('links_catColors') || '{}') || {}; } catch (e) { cmap = {}; }
+            if (!(category in cmap)) {
+              const used = new Array(DARK.length).fill(0);
+              Object.values(cmap).forEach(i => { if (i >= 0 && i < used.length) used[i]++; });
+              cmap[category] = used.indexOf(Math.min(...used));
+              try { localStorage.setItem('links_catColors', JSON.stringify(cmap)); } catch (e) { }
+            }
+            const ci = cmap[category];
+            categoryDiv.style.setProperty('--cat-d', DARK[ci]);
+            categoryDiv.style.setProperty('--cat-l', LIGHT[ci]);
+          }
 
           const h3 = document.createElement("h3");
           const titleSpan = document.createElement("span");
           titleSpan.textContent = category;
+
+          // drag the header to change the order of the categories
+          h3.draggable = true;
+          h3.title = 'Drag to reorder categories';
+          h3.style.cursor = 'grab';
+          h3.addEventListener('dragstart', (e) => {
+            draggedCat = category;
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', category);
+            categoryDiv.classList.add('cat-dragging');
+            e.stopPropagation();
+          });
+          h3.addEventListener('dragend', () => {
+            draggedCat = null;
+            document.querySelectorAll('.cat-dragging, .cat-drag-before, .cat-drag-after').forEach(el => el.classList.remove('cat-dragging', 'cat-drag-before', 'cat-drag-after'));
+          });
+          categoryDiv.addEventListener('dragover', (e) => {
+            if (!draggedCat || draggedCat === category) return;
+            e.preventDefault();
+            const r = categoryDiv.getBoundingClientRect();
+            const before = e.clientX < r.left + r.width / 2;
+            categoryDiv.classList.toggle('cat-drag-before', before);
+            categoryDiv.classList.toggle('cat-drag-after', !before);
+          });
+          categoryDiv.addEventListener('dragleave', (e) => {
+            if (!categoryDiv.contains(e.relatedTarget)) categoryDiv.classList.remove('cat-drag-before', 'cat-drag-after');
+          });
+          categoryDiv.addEventListener('drop', (e) => {
+            if (!draggedCat) return;
+            e.preventDefault();
+            e.stopPropagation();
+            const r = categoryDiv.getBoundingClientRect();
+            reorderCategory(draggedCat, category, e.clientX < r.left + r.width / 2);
+          });
 
           const menuContainer = document.createElement("div");
           menuContainer.className = "menu-container";
@@ -1230,8 +1371,20 @@
             delBtn.innerHTML = '<i data-lucide="trash-2" size="12"></i> Delete';
             delBtn.onclick = () => deleteLink(category, index);
 
+            const moveBtn = document.createElement("button");
+            moveBtn.className = "menu-item";
+            moveBtn.innerHTML = '<i data-lucide="folder-input" size="12"></i> Move to…';
+            moveBtn.onclick = () => chooseCategoryFor('move', category, index);
+
+            const copyBtn = document.createElement("button");
+            copyBtn.className = "menu-item";
+            copyBtn.innerHTML = '<i data-lucide="copy" size="12"></i> Copy to…';
+            copyBtn.onclick = () => chooseCategoryFor('copy', category, index);
+
             dropdown.appendChild(viewBtn);
             dropdown.appendChild(editBtn);
+            dropdown.appendChild(moveBtn);
+            dropdown.appendChild(copyBtn);
             dropdown.appendChild(delBtn);
             
             menuContainer.appendChild(menuBtn);
@@ -1250,6 +1403,179 @@
         if (window.lucide) {
           setTimeout(() => lucide.createIcons(), 10);
         }
+      }
+
+      // Move category `src` before/after `target`; the order is saved (and synced to the file)
+      function reorderCategory(src, target, before) {
+        draggedCat = null;
+        if (!src || src === target) return;
+        const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        if (!(src in all) || !(target in all)) return;
+        const keys = Object.keys(all).filter(k => k !== src);
+        let i = keys.indexOf(target);
+        if (!before) i++;
+        keys.splice(i, 0, src);
+        const out = {};
+        keys.forEach(k => { out[k] = all[k]; });
+        localStorage.setItem("customCategories", JSON.stringify(out));
+        localStorage.setItem("backup_customCategories", JSON.stringify(out));
+        loadLinks(document.getElementById("category-select").value || null);
+        syncLinksToFile();
+        showToast('✓ Category order saved');
+      }
+
+      // ---------- "Select category" dropdown: drag the names to change their order ----------
+      (function () {
+        const sel = document.getElementById('category-select');
+        const menu = document.createElement('div');
+        menu.id = 'catOrderMenu';
+        menu.hidden = true;
+        document.body.appendChild(menu);
+        let dragSrc = null;
+
+        const names = () => { try { return Object.keys(JSON.parse(localStorage.getItem('customCategories')) || {}); } catch (e) { return []; } };
+
+        function choose(v) {
+          sel.value = v;
+          sel.dispatchEvent(new Event('change'));
+          close();
+        }
+        function render() {
+          menu.innerHTML = '';
+          const hint = document.createElement('div');
+          hint.className = 'co-hint';
+          hint.textContent = 'Drag ⠿ to change the order · click to select';
+          menu.appendChild(hint);
+
+          const none = document.createElement('div');
+          none.className = 'co-item' + (sel.value === '' ? ' sel' : '');
+          none.textContent = '🔁 Select category (show all)';
+          none.onclick = () => choose('');
+          menu.appendChild(none);
+
+          names().forEach(n => {
+            const it = document.createElement('div');
+            it.className = 'co-item' + (sel.value === n ? ' sel' : '');
+            it.draggable = true;
+            it.dataset.cat = n;
+            const h = document.createElement('span'); h.className = 'co-handle'; h.textContent = '⠿';
+            const t = document.createElement('span'); t.textContent = n;
+            it.appendChild(h); it.appendChild(t);
+            it.addEventListener('dragstart', e => { dragSrc = n; it.classList.add('co-drag'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', n); });
+            it.addEventListener('dragend', () => { dragSrc = null; menu.querySelectorAll('.co-drag,.co-before,.co-after').forEach(x => x.classList.remove('co-drag', 'co-before', 'co-after')); });
+            it.addEventListener('dragover', e => {
+              if (!dragSrc || dragSrc === n) return;
+              e.preventDefault();
+              const r = it.getBoundingClientRect();
+              const before = e.clientY < r.top + r.height / 2;
+              it.classList.toggle('co-before', before);
+              it.classList.toggle('co-after', !before);
+            });
+            it.addEventListener('dragleave', () => it.classList.remove('co-before', 'co-after'));
+            it.addEventListener('drop', e => {
+              if (!dragSrc) return;
+              e.preventDefault();
+              const r = it.getBoundingClientRect();
+              const before = e.clientY < r.top + r.height / 2;
+              const src = dragSrc; dragSrc = null;
+              reorderCategory(src, n, before);   // saves, syncs, redraws the cards and the select
+              render();                           // keep the list open so you can keep dragging
+            });
+            it.onclick = () => choose(n);
+            menu.appendChild(it);
+          });
+        }
+        function open() {
+          const r = sel.getBoundingClientRect();
+          menu.style.left = r.left + 'px';
+          menu.style.top = (r.bottom + 2) + 'px';
+          menu.style.minWidth = r.width + 'px';
+          render();
+          menu.hidden = false;
+        }
+        function close() { menu.hidden = true; }
+
+        // open our list instead of the browser's plain one
+        sel.addEventListener('mousedown', e => { e.preventDefault(); sel.focus(); menu.hidden ? open() : close(); });
+        document.addEventListener('mousedown', e => { if (!menu.hidden && !menu.contains(e.target) && e.target !== sel) close(); });
+        document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+      })();
+
+      // ---------- Move / Copy a link to another (existing or new) category ----------
+      function chooseCategoryFor(mode, fromCategory, index) {
+        const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        const link = (all[fromCategory] || [])[index];
+        if (!link) return;
+        const verb = mode === 'move' ? 'Move' : 'Copy';
+        closeLinksModal();
+        const ov = document.createElement('div');
+        ov.id = 'nmOverlay'; ov.className = 'nm-overlay';
+        const box = document.createElement('div'); box.className = 'nm-box'; box.style.width = 'min(420px, 92vw)';
+        const head = document.createElement('div'); head.className = 'nm-head';
+        const title = document.createElement('span');
+        title.textContent = verb + ' "' + (link.name || '') + '" to…';
+        title.style.cssText = 'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-right:8px;';
+        const x = document.createElement('button'); x.className = 'nm-btn'; x.textContent = '✕'; x.onclick = closeLinksModal;
+        head.appendChild(title); head.appendChild(x);
+        const body = document.createElement('div'); body.className = 'nm-body';
+
+        const others = Object.keys(all).filter(c => c !== fromCategory);
+        if (!others.length) {
+          const none = document.createElement('div'); none.style.opacity = '.7'; none.textContent = 'There is no other category yet - type a new name below.';
+          body.appendChild(none);
+        }
+        others.forEach(c => {
+          const row = document.createElement('div');
+          row.className = 'nm-row'; row.style.cursor = 'pointer';
+          const info = document.createElement('div'); info.className = 'info';
+          const t = document.createElement('div'); t.className = 't'; t.textContent = c;
+          const u = document.createElement('div'); u.className = 'u'; u.textContent = (all[c] || []).length + ' links';
+          info.appendChild(t); info.appendChild(u); row.appendChild(info);
+          row.onmouseenter = () => { row.style.background = 'rgba(79,70,229,.12)'; };
+          row.onmouseleave = () => { row.style.background = ''; };
+          row.onclick = () => { closeLinksModal(); applyLinkTransfer(mode, fromCategory, index, c); };
+          body.appendChild(row);
+        });
+
+        // or create a new category on the spot
+        const nw = document.createElement('div');
+        nw.style.cssText = 'display:flex;gap:6px;margin-top:10px;';
+        const inp = document.createElement('input');
+        inp.type = 'text'; inp.placeholder = 'Or type a new category name…';
+        inp.style.cssText = 'flex:1;';
+        const go = document.createElement('button'); go.className = 'nm-btn'; go.textContent = verb + ' here';
+        const submit = () => { const n = inp.value.trim(); if (!n) return; closeLinksModal(); applyLinkTransfer(mode, fromCategory, index, n); };
+        go.onclick = submit;
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+        nw.appendChild(inp); nw.appendChild(go); body.appendChild(nw);
+
+        box.appendChild(head); box.appendChild(body); ov.appendChild(box);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) closeLinksModal(); });
+        document.body.appendChild(ov);
+        const onKey = e => { if (e.key === 'Escape') { closeLinksModal(); document.removeEventListener('keydown', onKey, true); } };
+        document.addEventListener('keydown', onKey, true);
+      }
+
+      function applyLinkTransfer(mode, fromCategory, index, target) {
+        const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        const link = (all[fromCategory] || [])[index];
+        if (!link || !target || target === fromCategory) return;
+        if (!all[target]) all[target] = [];
+        const dup = all[target].some(l => l.name === link.name && l.url === link.url);
+        if (mode === 'copy') {
+          if (dup) { showToast('Already in "' + target + '"'); return; }
+          all[target].push({ ...link });
+          showToast('✓ Copied to "' + target + '"');
+        } else {
+          if (!dup) all[target].push(link);       // never create a duplicate in the target
+          all[fromCategory].splice(index, 1);
+          if (all[fromCategory].length === 0) delete all[fromCategory];
+          showToast('✓ Moved to "' + target + '"');
+        }
+        localStorage.setItem("customCategories", JSON.stringify(all));
+        localStorage.setItem("backup_customCategories", JSON.stringify(all));
+        loadLinks(document.getElementById("category-select").value || null);
+        syncLinksToFile();
       }
 
       function handleDragStart(e, category, index) {

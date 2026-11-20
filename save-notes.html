@@ -1020,6 +1020,37 @@
     html[data-theme="dark"] .theme-toggle { background: #334155; }
     html[data-theme="dark"] .theme-ball { transform: translateX(20px); background: #0f172a; }
 
+
+    /* ---------- Dark mode in the VS Code "Dark+" palette ---------- */
+    html[data-theme="dark"] {
+      --primary: #3794ff;
+      --primary-hover: #1177bb;
+      --bg-body: #1e1e1e;
+      --bg-card: #252526;
+      --text-main: #cccccc;
+      --text-muted: #9d9d9d;
+      --border: #3c3c3c;
+    }
+    html[data-theme="dark"] .editor-card, html[data-theme="dark"] #editor { background: #1e1e1e; }
+    html[data-theme="dark"] #editor { color: #d4d4d4; }
+    html[data-theme="dark"] .editor-toolbar { background: #252526; }
+    html[data-theme="dark"] .status-bar { background: #1e1e1e; }
+    html[data-theme="dark"] .note-row:hover { background: #2a2d2e; }
+    html[data-theme="dark"] .note-row.active { background: #04395e; border-color: #0e639c; }
+    html[data-theme="dark"] .note-row .index-num { background: #3c3c3c; color: #cccccc; }
+    html[data-theme="dark"] .note-row.active .index-num { background: #0e639c; color: #ffffff; }
+    html[data-theme="dark"] .cat-trigger:hover, html[data-theme="dark"] .ctx-item:hover, html[data-theme="dark"] .cat-item:hover { background: #2a2d2e; }
+    html[data-theme="dark"] .cat-item.selected { background: #04395e; }
+    html[data-theme="dark"] input:not([type="color"]):not([type="checkbox"]), html[data-theme="dark"] select, html[data-theme="dark"] textarea { background: #3c3c3c; color: #cccccc; border-color: #3c3c3c; }
+    html[data-theme="dark"] .btn-primary, html[data-theme="dark"] #fabNewBtn { background: #0e639c; color: #ffffff; }
+    html[data-theme="dark"] .btn-primary:hover, html[data-theme="dark"] #fabNewBtn:hover { background: #1177bb; }
+    html[data-theme="dark"] #newNoteBtn { background: #04395e; color: #75beff; border-color: #0e639c; }
+    html[data-theme="dark"] #newNoteBtn:hover { background: #0e639c; color: #ffffff; }
+    html[data-theme="dark"] .toolbar-actions .btn-ghost:hover, html[data-theme="dark"] .toolbar-actions select:hover { background: #2a2d2e; color: #75beff; border-color: #0e639c; box-shadow: none; }
+    html[data-theme="dark"] .close-modal { background: #3c3c3c; color: #cccccc; }
+    html[data-theme="dark"] .theme-toggle { background: #3c3c3c; }
+    html[data-theme="dark"] .theme-ball { background: #1e1e1e; }
+    html[data-theme="dark"] #sizeMenu .size-item:hover { background: #0e639c; }
     /* Toolbar hover highlight */
     .toolbar-actions .btn,
     .toolbar-actions select {
