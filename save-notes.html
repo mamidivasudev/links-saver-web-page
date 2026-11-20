@@ -705,6 +705,25 @@
       color: white;
     }
 
+    .note-row .pin-mark {
+      font-size: 0.7rem;
+      flex-shrink: 0;
+    }
+
+    .note-row .snippet {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .note-row .cat-tag {
+      font-size: 0.68rem;
+      color: var(--primary);
+      font-weight: 600;
+    }
+
     .color-btn {
       padding: 3px 7px;
       gap: 4px;
@@ -1057,6 +1076,8 @@
           </div>
           <button class="icon-btn" id="btnAddCat" title="Add Category"><i data-lucide="plus" size="12"></i></button>
         </div>
+        <input id="noteSearch" type="search" placeholder="Search all notes… (Ctrl+K)" autocomplete="off"
+          style="width:100%;margin-top:6px;padding:5px 8px;font-size:0.8rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;outline:none;">
       </div>
 
       <div id="notesList" class="notes-list">
@@ -1103,8 +1124,8 @@
                 <span class="slider"></span>
               </span>
             </label>
-            <button id="copyNoteBtn" class="btn btn-ghost">Copy</button>
-            <button id="previewBtn" class="btn btn-ghost">Preview</button>
+            <button id="copyNoteBtn" class="btn btn-ghost"><i data-lucide="copy" size="12"></i> Copy</button>
+            <button id="previewBtn" class="btn btn-ghost"><i data-lucide="eye" size="12"></i> Preview</button>
             <button id="undoBtn" class="btn btn-ghost fmt-btn" title="Undo (Ctrl+Z)"><i data-lucide="undo-2"
                 size="12"></i></button>
             <button id="redoBtn" class="btn btn-ghost fmt-btn" title="Redo (Ctrl+Y)"><i data-lucide="redo-2"
@@ -1126,13 +1147,13 @@
               <input type="color" id="textColorInput" value="#dc2626"></label>
             <button id="lineBtn" class="btn btn-ghost" title="Insert horizontal line"><i data-lucide="minus"
                 size="12"></i></button>
-            <button id="highlightBtn" class="btn btn-ghost fmt-btn" title="Highlight selected text (click again to remove)"><i data-lucide="highlighter"
+            <button id="highlightBtn"class="btn btn-ghost fmt-btn" title="Highlight selected text (click again to remove)"><i data-lucide="highlighter"
                 size="12"></i></button>
             <input type="color" id="highlightColorInput" value="#fff176"
               style="position:fixed;opacity:0;width:1px;height:1px;border:0;padding:0;pointer-events:none;">
-            <button id="formatJsonBtn" class="btn btn-ghost" title="Format as JSON">JSON</button>
-            <button id="newNoteBtn" class="btn btn-ghost">New</button>
-            <button id="deleteNoteBtn" class="btn btn-ghost" style="color: var(--danger)">Delete</button>
+            <button id="formatJsonBtn" class="btn btn-ghost" title="Format as JSON"><i data-lucide="braces" size="12"></i> JSON</button>
+            <button id="newNoteBtn" class="btn btn-ghost"><i data-lucide="plus" size="12"></i> New</button>
+            <button id="deleteNoteBtn" class="btn btn-ghost" style="color: var(--danger)"><i data-lucide="trash-2" size="12"></i> Delete</button>
             <button id="saveNoteBtn" class="btn btn-primary"><i data-lucide="save" size="12"></i> Save</button><!-- label switches to "Update" when editing an existing note -->
           </div>
         </div>
@@ -1290,9 +1311,128 @@
           window.open(url, '_blank', 'noopener');
         }
       });
-      const setLinkHint = e => editor.style.cursor = (e.ctrlKey || e.metaKey) ? 'pointer' : '';
+      const setLinkHint = e => editor.style.cursor = (e.ctrlKey || e.metaKey) ? 'pointer' : (e.altKey ? 'copy' : '');
       window.addEventListener('keydown', setLinkHint);
       window.addEventListener('keyup', setLinkHint);
+
+      // ---------- Alt+Click: copy the clicked line (or just the value after "label :") ----------
+      editor.addEventListener('mousedown', e => { if (e.altKey) e.preventDefault(); });
+      editor.addEventListener('click', e => {
+        if (!e.altKey) return;
+        e.preventDefault();
+        let node, offset;
+        if (document.caretPositionFromPoint) {
+          const p = document.caretPositionFromPoint(e.clientX, e.clientY);
+          if (!p) return; node = p.offsetNode; offset = p.offset;
+        } else if (document.caretRangeFromPoint) {
+          const r0 = document.caretRangeFromPoint(e.clientX, e.clientY);
+          if (!r0) return; node = r0.startContainer; offset = r0.startOffset;
+        } else return;
+        const sel = window.getSelection();
+        const saved = sel.rangeCount ? sel.getRangeAt(0).cloneRange() : null;
+        let line = '';
+        try {
+          const r = document.createRange();
+          r.setStart(node, offset); r.collapse(true);
+          sel.removeAllRanges(); sel.addRange(r);
+          const gran = 'paragraphboundary';
+          sel.modify('move', 'backward', gran);
+          sel.modify('extend', 'forward', gran);
+          line = sel.toString();
+        } catch (err) { /* selection.modify unsupported */ }
+        sel.removeAllRanges();
+        if (saved) sel.addRange(saved);
+        line = line.replace(/ /g, ' ').trim();
+        if (!line) return;
+        let value = line;
+        if (!/^https?:\/\//i.test(line)) {
+          const m = line.match(/^[^:=]{1,40}[:=]\s*(.+)$/);
+          if (m) value = m[1].trim();
+        }
+        const shown = value.length > 28 ? value.slice(0, 28) + '…' : value;
+        const done = () => showToast('✓ Copied: ' + shown);
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(value).then(done).catch(() => showToast('Copy failed'));
+        } else {
+          const ta = document.createElement('textarea');
+          ta.value = value; document.body.appendChild(ta); ta.select();
+          try { document.execCommand('copy'); done(); } catch { showToast('Copy failed'); }
+          ta.remove();
+        }
+      });
+
+      // ---------- Search across all notes ----------
+      let searchQuery = '';
+      const noteSearch = document.getElementById('noteSearch');
+      let searchTimer;
+      function noteDisplayTitle(note) {
+        if (note.title && note.title.toString().trim()) return note.title.toString().trim();
+        const first = stripHtml((note.content || '').slice(0, 1000)).replace(/\r\n/g, '\n').split('\n')[0].trim();
+        return first || 'Untitled Note';
+      }
+      function renderSearchResults() {
+        const q = searchQuery.trim().toLowerCase();
+        notesListInner.innerHTML = '';
+        let count = 0;
+        const LIMIT = 100;
+        outer:
+        for (const cat of categories) {
+          const list = notesData[cat] || [];
+          for (let idx = 0; idx < list.length; idx++) {
+            const note = list[idx];
+            const title = noteDisplayTitle(note);
+            const text = stripHtml(note.content || '');
+            const pos = text.toLowerCase().indexOf(q);
+            if (!title.toLowerCase().includes(q) && pos < 0) continue;
+            if (count++ >= LIMIT) break outer;
+
+            const row = document.createElement('div');
+            row.className = 'note-row';
+            row.style.padding = '4px 12px';
+            const body = document.createElement('div');
+            body.style.cssText = 'min-width:0;flex:1;';
+            const tag = document.createElement('div');
+            tag.className = 'cat-tag';
+            tag.textContent = cat;
+            const t = document.createElement('div');
+            t.className = 'title';
+            t.textContent = title.slice(0, 60);
+            body.appendChild(tag);
+            body.appendChild(t);
+            if (pos >= 0) {
+              let snip = text.slice(Math.max(0, pos - 25), pos + q.length + 45).replace(/\s+/g, ' ');
+              const s = document.createElement('div');
+              s.className = 'snippet';
+              s.textContent = '…' + snip + '…';
+              body.appendChild(s);
+            }
+            row.appendChild(body);
+            row.addEventListener('click', () => {
+              if (!confirmLeaveNote()) return;
+              selectedNoteIndex = null;
+              setCategoryTrigger(cat);
+              buildCatMenu();
+              noteSearch.value = '';
+              searchQuery = '';
+              openNoteByIndex(idx);
+            });
+            notesListInner.appendChild(row);
+          }
+        }
+        if (!count) {
+          notesListInner.innerHTML = '<div class="empty-state"><span>No matching notes</span></div>';
+        }
+      }
+      noteSearch.addEventListener('input', () => {
+        clearTimeout(searchTimer);
+        searchTimer = setTimeout(() => { searchQuery = noteSearch.value; renderNotesList(); }, 120);
+      });
+      noteSearch.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { noteSearch.value = ''; searchQuery = ''; renderNotesList(); noteSearch.blur(); }
+      });
+      window.addEventListener('keydown', e => {
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); noteSearch.focus(); noteSearch.select(); }
+      });
 
       const saveNoteBtn = document.getElementById('saveNoteBtn');
       const newNoteBtn = document.getElementById('newNoteBtn');
@@ -2057,6 +2197,7 @@
       // --- Render compact list (modified to use optional note.title) ---
       function renderNotesList() {
         notesListInner.innerHTML = '';
+        if (searchQuery && searchQuery.trim()) { renderSearchResults(); return; }
 
         if (!selectedCategory) {
           notesListInner.innerHTML = `<div class="empty-state">
@@ -2076,10 +2217,14 @@
 
         // newest first, numbering follows creation order (1=oldest, N=newest)
         // Revert to ascending order (1=oldest at top, N=newest at bottom) as per last request
-        arr.forEach((note, idx) => {
+        // pinned notes first (stable), numbering keeps creation order
+        const order = arr.map((_, i) => i).sort((a, b) => (arr[b].pinned ? 1 : 0) - (arr[a].pinned ? 1 : 0));
+        order.forEach((idx) => {
+          const note = arr[idx];
           const realIndex = idx;
           const displayIndex = idx + 1;
           const row = document.createElement('div');
+          row.dataset.idx = realIndex;
           row.className = 'note-row' + (selectedNoteIndex === realIndex ? ' active' : '');
           row.addEventListener('click', (e) => {
             if (isBulkMode) {
@@ -2141,6 +2286,13 @@
           actions.appendChild(moreBtn);
           row.appendChild(indexNum);
           row.appendChild(title);
+          if (note.pinned) {
+            const pin = document.createElement('span');
+            pin.className = 'pin-mark';
+            pin.textContent = '📌';
+            pin.title = 'Pinned';
+            row.appendChild(pin);
+          }
           row.appendChild(actions);
 
           notesListInner.appendChild(row);
@@ -2311,8 +2463,7 @@
         const note = arr[index];
         if (!note) return;
 
-        const rows = document.querySelectorAll('.note-row');
-        const row = rows[index];
+        const row = document.querySelector(`.note-row[data-idx="${index}"]`);
         if (!row) return;
 
         const titleEl = row.querySelector('.title');
@@ -2396,6 +2547,22 @@
           menu.classList.remove('open');
         };
 
+        const pinItem = document.createElement('div');
+        pinItem.className = 'ctx-item';
+        const pinNote = (notesData[selectedCategory] || [])[index];
+        pinItem.innerHTML = pinNote && pinNote.pinned
+          ? '<i data-lucide="pin-off" size="12"></i> Unpin'
+          : '<i data-lucide="pin" size="12"></i> Pin to top';
+        pinItem.onclick = () => {
+          if (!pinNote) return;
+          pinNote.pinned = !pinNote.pinned;
+          saveStorage();
+          renderNotesList();
+          syncToFile().catch(() => { });
+          showToast(pinNote.pinned ? '📌 Pinned' : 'Unpinned');
+          menu.classList.remove('open');
+        };
+
         const selectMul = document.createElement('div');
         selectMul.className = 'ctx-item';
         selectMul.innerHTML = '<i data-lucide="check-square" size="12"></i> Select Multiple';
@@ -2420,6 +2587,7 @@
         };
 
         menu.appendChild(edit);
+        menu.appendChild(pinItem);
         menu.appendChild(selectMul);
         menu.appendChild(del);
 
