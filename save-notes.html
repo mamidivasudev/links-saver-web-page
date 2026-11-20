@@ -68,7 +68,7 @@
       gap: 6px;
     }
 
-    /* Starts exactly above the "Auto Title" button (sidebar 280 + borders/padding) */
+    /* Starts exactly above the first toolbar button (sidebar 280 + borders/padding) */
     #appBarTitle {
       position: absolute;
       top: 0;
@@ -879,9 +879,6 @@
     .toolbar-actions .color-btn { padding: 3px 6px; }
     .toolbar-actions .btn svg { width: 14px; height: 14px; }
     .toolbar-actions #fontSizeSelect { width: 54px; padding: 4px 2px; }
-    .toolbar-actions .switch { width: 28px; height: 15px; }
-    .toolbar-actions .slider:before { height: 9px; width: 9px; left: 3px; bottom: 3px; }
-    .toolbar-actions input:checked + .slider:before { transform: translateX(13px); }
     .editor-toolbar { padding: 4px 8px; }
 
     .hl-swatch {
@@ -949,6 +946,49 @@
     .sidebar-footer .btn { flex: 1 1 40% !important; }
     .sc-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--border); }
     .sc-row:last-child { border-bottom: none; }
+
+    /* Size dropdown: small and neat (inline width:auto on the element needs !important) */
+    .toolbar-actions #fontSizeSelect {
+      width: 46px !important;
+      padding: 3px 2px !important;
+      font-size: 0.72rem !important;
+      font-weight: 600;
+      text-align: center;
+    }
+    #fontSizeSelect option { font-size: 0.75rem; font-weight: 500; }
+
+    #fontSizeBtn { min-width: 44px; font-weight: 700; font-size: 0.72rem !important; }
+    #sizeMenu {
+      position: fixed;
+      z-index: 3500;
+      min-width: 64px;
+      max-height: 70vh;
+      overflow: auto;
+      background: var(--bg-card);
+      color: var(--text-main);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: var(--shadow-lg);
+      padding: 4px;
+      font-size: 0.78rem;
+    }
+    #sizeMenu[hidden] { display: none; }
+    #sizeMenu .size-item { padding: 4px 18px; border-radius: 5px; cursor: pointer; text-align: center; }
+    #sizeMenu .size-item:hover { background: var(--primary); color: #fff; }
+
+    /* Last word on spacing: keep Save/Update on the same row as the tools */
+    .toolbar-actions { gap: 2px !important; }
+    .toolbar-actions .btn { padding: 4px 6px !important; }
+    .toolbar-actions .btn.btn-primary { padding: 4px 10px !important; }
+    .toolbar-actions .split-btn { padding-right: 3px; }
+    .toolbar-actions .split-btn input[type="color"] { width: 16px; height: 16px; }
+    .toolbar-actions .btn svg { width: 13px; height: 13px !important; }
+    #fontSizeBtn { min-width: 38px; }
+
+    #sizeMenu .size-head { padding: 4px 10px 6px; font-size: 0.68rem; color: var(--text-muted); text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 3px; white-space: nowrap; }
+    #sizeMenu .size-item.current { font-weight: 700; color: var(--primary); background: var(--bg-body); }
+    #sizeMenu .size-item.current::after { content: ' \2713'; }
+    #sizeMenu .size-item.current:hover { background: var(--primary); color: #fff; }
 
     /* Toolbar hover highlight */
     .toolbar-actions .btn,
@@ -1117,52 +1157,6 @@
     }
 
     /* Premium Toggle Switch styling */
-    .switch {
-      position: relative;
-      display: inline-flex;
-      width: 34px;
-      height: 18px;
-      flex-shrink: 0;
-    }
-
-    .switch input {
-      opacity: 0;
-      width: 0;
-      height: 0;
-    }
-
-    .slider {
-      position: absolute;
-      cursor: pointer;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background-color: #cbd5e1;
-      transition: .25s ease;
-      border-radius: 20px;
-    }
-
-    .slider:before {
-      position: absolute;
-      content: "";
-      height: 12px;
-      width: 12px;
-      left: 3px;
-      bottom: 3px;
-      background-color: white;
-      transition: .25s ease;
-      border-radius: 50%;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-    }
-
-    input:checked + .slider {
-      background-color: var(--primary);
-    }
-
-    input:checked + .slider:before {
-      transform: translateX(16px);
-    }
   </style>
 </head>
 
@@ -1253,7 +1247,7 @@
           </div>
           <button class="icon-btn" id="btnAddCat" title="Add Category"><i data-lucide="plus" size="12"></i></button>
         </div>
-        <input id="noteSearch" type="search" placeholder="Search all notes… (Ctrl+K)" autocomplete="off"
+        <input id="noteSearch" type="search" placeholder="Search" title="Search all notes (Ctrl+K)" autocomplete="off"
           style="width:100%;margin-top:6px;padding:5px 8px;font-size:0.8rem;border:1px solid var(--border);border-radius:6px;font-family:inherit;outline:none;">
       </div>
 
@@ -1300,13 +1294,6 @@
             <span id="bcNote" style="color:var(--text-muted);font-weight:400;font-size:0.85rem;">No note open</span>
           </div>
           <div class="toolbar-actions">
-            <label class="btn btn-ghost" style="display:flex;align-items:center;gap:4px;cursor:pointer;padding:2px 6px;" title="Auto-save with first line as title">
-              <span style="font-size: 0.66rem; font-weight: 500; user-select: none; white-space: nowrap;">Auto Title</span>
-              <span class="switch">
-                <input type="checkbox" id="autoTitleToggle">
-                <span class="slider"></span>
-              </span>
-            </label>
             <button id="copyNoteBtn" class="btn btn-ghost" title="Copy whole note  (Alt+Click on a line copies just that line / value)"><i data-lucide="copy" size="12"></i><span class="lbl"> Copy</span></button>
             <button id="previewBtn" class="btn btn-ghost" title="Preview"><i data-lucide="eye" size="12"></i><span class="lbl"> Preview</span></button>
             <button id="undoBtn" class="btn btn-ghost fmt-btn" title="Undo (Ctrl+Z)"><i data-lucide="undo-2"
@@ -1320,13 +1307,7 @@
             <button id="alLeftBtn" class="btn btn-ghost fmt-btn" title="Align left"><i data-lucide="align-left" size="12"></i></button>
             <button id="alCenterBtn" class="btn btn-ghost fmt-btn" title="Align center"><i data-lucide="align-center" size="12"></i></button>
             <button id="alRightBtn" class="btn btn-ghost fmt-btn" title="Align right"><i data-lucide="align-right" size="12"></i></button>
-            <select id="fontSizeSelect" class="btn btn-ghost" title="Font size of selected text"
-              style="padding:3px 4px;width:auto;">
-              <option value="">Size</option>
-              <option>10</option><option>12</option><option>14</option><option>16</option>
-              <option>18</option><option>20</option><option>24</option><option>28</option>
-              <option>32</option><option>40</option>
-            </select>
+            <button id="fontSizeBtn" class="btn btn-ghost fmt-btn" title="Font size of selected text (move over a size to preview)"><span id="fontSizeLabel">Size</span></button>
             <button id="boldBtn"class="btn btn-ghost fmt-btn" title="Bold (Ctrl+B)"><i data-lucide="bold"
                 size="12"></i></button>
             <button id="italicBtn" class="btn btn-ghost fmt-btn" title="Italic (Ctrl+I)"><i data-lucide="italic"
@@ -1670,7 +1651,7 @@
         } else if (filePerm === 'granted') {
           const folder = storage.getItem(NOTES_PREFIX + 'syncFolderName');
           fileStatusEl.textContent = '📄 ' + (folder ? folder + ' / ' : '') + fileHandle.name; fileStatusEl.style.color = 'var(--success)';
-          fileStatusEl.title = (folder ? folder + ' / ' : '') + fileHandle.name + ' (connected) - click to open the folder, Shift+click to change its path';
+          fileStatusEl.title = (folder ? folder + ' / ' : '') + fileHandle.name + ' (connected)';
         } else {
           fileStatusEl.textContent = '⚠ Click 🔄 to reconnect'; fileStatusEl.style.color = '#d97706';
           fileStatusEl.title = 'Browser needs permission again to read/write ' + fileHandle.name;
@@ -1812,6 +1793,11 @@
       let notesData = JSON.parse(storage.getItem(NOTES_KEY)) || {};
       let selectedCategory = null;
       let selectedNoteIndex = null;
+      const LASTNOTE_KEY = NOTES_PREFIX + 'lastNote';
+      const restoreNote = (() => { try { return JSON.parse(storage.getItem(LASTNOTE_KEY)); } catch (e) { return null; } })();
+      const rememberNote = (cat, idx, note) => {
+        try { storage.setItem(LASTNOTE_KEY, JSON.stringify(note ? { cat, idx, id: note.id || null } : null)); } catch (e) { }
+      };
 
       const uid = () => Math.random().toString(36).slice(2, 9);
       const saveStorage = () => {
@@ -2314,27 +2300,176 @@
         if (s.rangeCount && editor.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange();
       });
 
-      // Font size of selected text (px)
-      document.getElementById('fontSizeSelect').addEventListener('change', e => {
-        const px = e.target.value;
-        e.target.value = '';
-        if (!px) return;
-        editor.focus();
-        if (savedRange) {
-          const s = window.getSelection();
-          s.removeAllRanges(); s.addRange(savedRange);
-        }
-        const sel = window.getSelection();
-        if (!sel.rangeCount || sel.isCollapsed) { showToast('Select some text first'); return; }
-        document.execCommand('styleWithCSS', false, false);
-        document.execCommand('fontSize', false, '7');
-        editor.querySelectorAll('font[size="7"]').forEach(f => {
-          const span = document.createElement('span');
-          span.style.fontSize = px + 'px';
-          while (f.firstChild) span.appendChild(f.firstChild);
-          f.replaceWith(span);
+      // ---------- Font size with LIVE PREVIEW on hover ----------
+      (function () {
+        const SIZES = [10, 12, 14, 16, 18, 20, 24, 28, 32, 40];
+        const btn = document.getElementById('fontSizeBtn');
+        const menu = document.createElement('div');
+        menu.id = 'sizeMenu';
+        menu.hidden = true;
+        SIZES.forEach(px => {
+          const it = document.createElement('div');
+          it.className = 'size-item';
+          it.dataset.px = px;
+          it.textContent = px;
+          menu.appendChild(it);
         });
-      });
+        const head = document.createElement('div');
+        head.className = 'size-head';
+        menu.prepend(head);
+        document.body.appendChild(menu);
+        const label = document.getElementById('fontSizeLabel');
+
+        // size (px) of the text at the cursor / selection
+        function currentPx() {
+          const sel = window.getSelection();
+          if (!sel.rangeCount || !editor.contains(sel.anchorNode)) return null;
+          const n = sel.anchorNode;
+          const el = n.nodeType === 3 ? n.parentElement : n;
+          if (!el) return null;
+          const v = parseFloat(getComputedStyle(el).fontSize);
+          return isNaN(v) ? null : Math.round(v * 10) / 10;
+        }
+        function markCurrent() {
+          const cur = currentPx();
+          head.textContent = cur ? 'Current: ' + cur + 'px' : 'Pick a size';
+          menu.querySelectorAll('.size-item').forEach(it => it.classList.toggle('current', cur !== null && +it.dataset.px === cur));
+        }
+        let lblRaf = 0;
+        document.addEventListener('selectionchange', () => {
+          cancelAnimationFrame(lblRaf);
+          lblRaf = requestAnimationFrame(() => {
+            const cur = currentPx();
+            if (cur !== null) label.textContent = cur;
+          });
+        });
+
+        let previewActive = false;   // a preview edit currently sits on the undo stack
+        let previewPx = null;
+        let origRange = null;
+
+        function selectedRange() {
+          const sel = window.getSelection();
+          if (sel.rangeCount && !sel.isCollapsed && editor.contains(sel.anchorNode)) return sel.getRangeAt(0);
+          return null;
+        }
+        function cleanMarkers() {
+          ['__szA', '__szB'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+        }
+        function wrapSelection(px) {
+          const sel = window.getSelection();
+          if (!sel.rangeCount || sel.isCollapsed) return false;
+          const holder = document.createElement('div');
+          holder.appendChild(sel.getRangeAt(0).cloneContents());
+          // old sizes inside the selection must not override the new one
+          holder.querySelectorAll('[style]').forEach(el => {
+            el.style.fontSize = '';
+            if (!el.getAttribute('style')) el.removeAttribute('style');
+          });
+          holder.querySelectorAll('font[size]').forEach(f => f.removeAttribute('size'));
+          // wrap each piece of text separately (works across lines / blocks / bold / links)
+          const walker = document.createTreeWalker(holder, NodeFilter.SHOW_TEXT);
+          const nodes = [];
+          let n;
+          while ((n = walker.nextNode())) nodes.push(n);
+          nodes.forEach(t => {
+            if (!/\S/.test(t.nodeValue)) return;
+            const sp = document.createElement('span');
+            sp.style.fontSize = px + 'px';
+            t.parentNode.insertBefore(sp, t);
+            sp.appendChild(t);
+          });
+          const html = '<span id="__szA">&#8203;</span>' + holder.innerHTML + '<span id="__szB">&#8203;</span>';
+          const ok = document.execCommand('insertHTML', false, html);
+          const A = document.getElementById('__szA'), B = document.getElementById('__szB');
+          if (A && B) {                       // keep the same text selected for the next preview
+            const r = document.createRange();
+            r.setStartAfter(A); r.setEndBefore(B);
+            sel.removeAllRanges(); sel.addRange(r);
+          }
+          return ok && !!A && !!B;
+        }
+        function revertPreview() {
+          if (!previewActive) return;
+          editor.focus();
+          document.execCommand('undo');
+          previewActive = false; previewPx = null;
+          const sel = window.getSelection();
+          if ((!sel.rangeCount || sel.isCollapsed) && origRange) {
+            try { sel.removeAllRanges(); sel.addRange(origRange); } catch (e) { }
+          }
+        }
+        // No text selected: start a sized span at the cursor so the next typed text uses that size
+        function insertCaretSize(px) {
+          editor.focus();
+          const sel = window.getSelection();
+          if ((!sel.rangeCount || !editor.contains(sel.anchorNode)) && savedRange) {
+            sel.removeAllRanges(); sel.addRange(savedRange);
+          }
+          if (!sel.rangeCount) return;
+          document.execCommand('insertHTML', false, '<span id="__szcaret" style="font-size:' + px + 'px">&#8203;</span>');
+          const sp = document.getElementById('__szcaret');
+          if (sp && sp.firstChild) {
+            const r = document.createRange();
+            r.setStart(sp.firstChild, sp.firstChild.length);
+            r.collapse(true);
+            sel.removeAllRanges(); sel.addRange(r);
+            sp.removeAttribute('id');
+          }
+          showToast('Size ' + px + ' - start typing');
+        }
+        function preview(px) {
+          if (!selectedRange()) return;   // nothing to preview without a selection
+          if (previewPx === px && previewActive) return;
+          revertPreview();
+          editor.focus();
+          if (wrapSelection(px)) { previewActive = true; previewPx = px; }
+        }
+        function closeMenu(keep) {
+          if (menu.hidden) return;
+          if (!keep) revertPreview();
+          menu.hidden = true;
+          previewActive = false; previewPx = null; origRange = null;
+          document.removeEventListener('mousedown', outside, true);
+          document.removeEventListener('keydown', onKey, true);
+        }
+        function outside(e) { if (!menu.contains(e.target) && e.target !== btn && !btn.contains(e.target)) closeMenu(false); }
+        function onKey(e) { if (e.key === 'Escape') { e.preventDefault(); closeMenu(false); } }
+
+        btn.addEventListener('click', () => {
+          if (!menu.hidden) { closeMenu(false); return; }
+          editor.focus();
+          if (savedRange && window.getSelection().isCollapsed) {
+            const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(savedRange);
+          }
+          const r = selectedRange();        // no selection is fine: the size then applies to what you type next
+          origRange = r ? r.cloneRange() : null;
+          markCurrent();
+          const b = btn.getBoundingClientRect();
+          menu.style.left = b.left + 'px';
+          menu.style.top = (b.bottom + 4) + 'px';
+          menu.hidden = false;
+          document.addEventListener('mousedown', outside, true);
+          document.addEventListener('keydown', onKey, true);
+        });
+        menu.addEventListener('mousedown', e => e.preventDefault()); // keep the editor selection
+        menu.addEventListener('mouseover', e => {
+          const it = e.target.closest('.size-item');
+          if (it) preview(+it.dataset.px);
+        });
+        menu.addEventListener('mouseleave', () => revertPreview());   // moving away restores the original
+        menu.addEventListener('click', e => {
+          const it = e.target.closest('.size-item');
+          if (!it) return;
+          const px = +it.dataset.px;
+          if (!selectedRange()) { insertCaretSize(px); closeMenu(true); return; }
+          if (!(previewActive && previewPx === px)) { revertPreview(); editor.focus(); wrapSelection(px); }
+          closeMenu(true);
+          editor.focus();
+          cleanMarkers();
+          window.getSelection().collapseToEnd();   // so the new size is visible straight away
+        });
+      })();
 
       // Text colour
       // Apply a colour once the picker settles (one undo step instead of one per shade)
@@ -2733,6 +2868,7 @@
         editor.innerHTML = sanitizeHtml(note.content || '');
         openedHtml = editor.innerHTML;
         selectedNoteIndex = index;
+        rememberNote(selectedCategory, index, note);
         lastSaved.textContent = note.updatedAt ? new Date(note.updatedAt).toLocaleString() : '—';
         renderNotesList();
         updateBreadcrumb();
@@ -2743,13 +2879,11 @@
         const wasNewNote = (selectedNoteIndex === null);
 
         if (!selectedCategory) { if (!isAutoSaveFromNew) alert('Please select a category first.'); return false; }
-        const content = editor.innerHTML;
+        const content = editor.innerHTML.replace(/\u200b/g, '').replace(/<span id="__sz[AB]"><\/span>/g, '');
         if (!editor.innerText.trim() && !content.includes('<hr')) return false;
 
         const now = new Date().toISOString();
         notesData[selectedCategory] = notesData[selectedCategory] || [];
-
-        const isAutoTitle = document.getElementById('autoTitleToggle')?.checked;
 
         if (selectedNoteIndex !== null) {
           // --- EXISTING NOTE: update in place to maintain chronological order ---
@@ -2770,15 +2904,9 @@
           showToast('✓ Note updated');
         } else {
           // --- NEW NOTE: determine name ---
-          let tt = '';
-          if (isAutoTitle) {
-            const plainContent = stripHtml(content);
-            tt = plainContent.replace(/\r\n/g, '\n').split('\n')[0].trim();
-          } else {
-            const namePrompt = prompt('Enter note name:');
-            if (namePrompt === null) return false; // Abort saving if user clicks Cancel
-            tt = namePrompt.toString().trim();
-          }
+          const namePrompt = prompt('Enter note name:');
+          if (namePrompt === null) return false; // Abort saving if user clicks Cancel
+          const tt = namePrompt.toString().trim();
 
           const newNote = { id: uid(), content, updatedAt: now };
           if (tt !== '') newNote.title = tt;
@@ -2803,7 +2931,7 @@
         // show saved feedback briefly, then clear editor ONLY if this was a NEW note and NOT an auto-save from New button
         setTimeout(() => {
           if (!isAutoSaveFromNew) {
-            if (wasNewNote && !isAutoTitle) {
+            if (wasNewNote) {
               editor.innerText = '';
               selectedNoteIndex = null;
               lastSaved.textContent = '—';
@@ -3037,6 +3165,7 @@
       }
 
       function clearEditor() {
+        rememberNote(null, null, null);
         editor.innerHTML = '';
         selectedNoteIndex = null;
         lastSaved.textContent = '—';
@@ -3048,12 +3177,7 @@
 
       saveNoteBtn.addEventListener('click', () => saveCurrentNote(false));
       newNoteBtn.addEventListener('click', () => { 
-        const isAutoTitle = document.getElementById('autoTitleToggle')?.checked;
-        if (isAutoTitle) {
-          saveCurrentNote(true);
-        } else if (!confirmLeaveNote()) {
-          return;
-        }
+        if (!confirmLeaveNote()) return;
         clearEditor();
         editor.focus(); 
       });
@@ -3384,26 +3508,72 @@
 
       // File button handlers
       openFileBtn.addEventListener('click', () => openNotesFile());
-      // Click the file name to open its folder in a new tab (browsers hide the real path, so you give it once)
-      fileStatusEl.style.cursor = 'pointer';
-      fileStatusEl.addEventListener('mouseenter', () => { fileStatusEl.style.textDecoration = 'underline'; });
-      fileStatusEl.addEventListener('mouseleave', () => { fileStatusEl.style.textDecoration = ''; });
-      fileStatusEl.addEventListener('click', e => {
-        if (!fileHandle) { openNotesFile(); return; }
-        const KEY = NOTES_PREFIX + 'syncFolderPath';
-        let path = storage.getItem(KEY);
-        if (!path || e.shiftKey) {
-          const v = prompt('Type the full path of your sync folder (asked once).\nExample: D:\\Sync_data\nTip: Shift+Click the name later to change it.', path || '');
-          if (!v || !v.trim()) return;
-          path = v.trim().replace(/^"|"$/g, '');
-          storage.setItem(KEY, path);
-        }
-        window.open('file:///' + encodeURI(path.replace(/\\/g, '/')), '_blank');
-      });
       syncBtn.addEventListener('click', () => syncFromFile());
+
+      // ---------- One open copy: opening the page again refreshes the tab that is already open ----------
+      (function () {
+        const myId = Math.random().toString(36).slice(2, 9);
+        let duplicate = false, answered = false;
+        const put = (k, v) => { try { localStorage.setItem(k, v); } catch (e) { } };
+
+        function showDup(state) {
+          const ov = document.createElement('div');
+          ov.style.cssText = 'position:fixed;inset:0;z-index:5000;background:var(--bg-body);color:var(--text-main);display:flex;align-items:center;justify-content:center;text-align:center;padding:24px;';
+          const box = document.createElement('div');
+          box.style.cssText = 'max-width:440px;';
+          const h = document.createElement('div');
+          h.style.cssText = 'font-size:1.15rem;font-weight:700;margin-bottom:8px;';
+          h.textContent = 'My Notes is already open in another tab';
+          const t = document.createElement('div');
+          t.style.cssText = 'color:var(--text-muted);margin-bottom:16px;line-height:1.5;';
+          t.textContent = state === 'dirty'
+            ? 'That tab has unsaved changes, so it was not refreshed. Switch to it, save, then close this tab.'
+            : 'That tab was refreshed. Switch to it and close this tab.';
+          const b1 = document.createElement('button');
+          b1.className = 'btn btn-primary';
+          b1.textContent = 'Close this tab';
+          b1.onclick = () => { try { window.close(); } catch (e) { } };
+          const b2 = document.createElement('button');
+          b2.className = 'btn btn-ghost';
+          b2.style.marginLeft = '8px';
+          b2.textContent = 'Use this tab instead';
+          b2.onclick = () => { duplicate = false; ov.remove(); };
+          box.append(h, t, b1, b2);
+          ov.appendChild(box);
+          document.body.appendChild(ov);
+        }
+
+        window.addEventListener('storage', e => {
+          if (!e.newValue) return;
+          if (e.key === 'notes_hello' && !duplicate) {
+            const helloId = e.newValue.split(':')[0];
+            if (helloId === myId) return;
+            const dirty = hasUnsavedChanges();
+            put('notes_here', myId + ':' + helloId + ':' + (dirty ? 'dirty' : 'ok') + ':' + Date.now());
+            if (!dirty) setTimeout(() => location.reload(), 150);   // refresh the page that is already open
+          } else if (e.key === 'notes_here') {
+            const parts = e.newValue.split(':');
+            if (parts[1] !== myId || answered) return;
+            answered = true; duplicate = true;
+            try { window.close(); } catch (err) { }                 // only works if this tab was opened by a script
+            setTimeout(() => showDup(parts[2]), 200);
+          }
+        });
+        put('notes_hello', myId + ':' + Date.now());
+      })();
 
       // init
       init();
+      // reopen the note that was open before the page was refreshed
+      if (restoreNote && restoreNote.cat && categories.includes(restoreNote.cat)) {
+        if (selectedCategory !== restoreNote.cat) {
+          setCategoryTrigger(restoreNote.cat); buildCatMenu(); renderNotesList();
+        }
+        const list = notesData[restoreNote.cat] || [];
+        let i = restoreNote.id ? list.findIndex(n => n.id === restoreNote.id) : -1;
+        if (i < 0 && !restoreNote.id && list[restoreNote.idx]) i = restoreNote.idx;
+        if (i >= 0) openNoteByIndex(i);
+      }
       initFileHandle();
       setTimeout(() => { if (!fileHandle) showToast('⚠ No sync file connected - click the folder icon to keep a backup file'); }, 3000);
       applySettings();
