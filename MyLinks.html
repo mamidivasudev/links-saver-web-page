@@ -508,15 +508,28 @@
       }
 
       .file-status {
-        font-size: 0.72rem;
-        font-weight: 500;
+        font-size: 0.82rem;
+        font-weight: 700;
         color: var(--text-light);
-        opacity: 0.85;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
-        max-width: 140px;
+        max-width: 280px;
       }
+
+      /* Trash dialog */
+      .nm-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, .5); z-index: 5000; display: flex; align-items: center; justify-content: center; }
+      .nm-box { background: #fff; color: #1e293b; border: 1px solid #e2e8f0; border-radius: 12px; width: min(620px, 92vw); max-height: 80vh; display: flex; flex-direction: column; box-shadow: 0 20px 40px rgba(0,0,0,.25); }
+      body.dark-mode .nm-box { background: #1e293b; color: #f1f5f9; border-color: #334155; }
+      .nm-head { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border-bottom: 1px solid rgba(148,163,184,.35); font-weight: 700; }
+      .nm-body { padding: 10px 14px; overflow: auto; font-size: .88rem; }
+      .nm-row { display: flex; align-items: center; gap: 8px; padding: 7px 0; border-bottom: 1px solid rgba(148,163,184,.25); }
+      .nm-row .info { flex: 1; min-width: 0; }
+      .nm-row .t { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .nm-row .u { font-size: .74rem; opacity: .7; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .nm-btn { padding: 4px 10px; border-radius: 6px; border: 1px solid rgba(148,163,184,.6); background: transparent; color: inherit; cursor: pointer; font-family: inherit; font-size: .8rem; }
+      .nm-btn:hover { border-color: var(--primary); color: var(--primary); }
+      .nm-btn.danger { color: #ef4444; }
 
       body.dark-mode .file-status {
         color: var(--text-dark);
@@ -526,9 +539,43 @@
         .top-bar { flex-direction: column; align-items: flex-start; }
         .form-grid { grid-template-columns: 1fr 1fr; }
       }
+
+      /* ---------- Compact header (like My Notes) ---------- */
+      .header-container { padding: 0.15rem 0.75rem; }
+      .top-bar { margin-bottom: 0.2rem; gap: 8px; }
+      .logo-section h2 { font-size: 1.02rem; gap: 6px; }
+      .logo-section h2 svg { width: 18px; height: 18px; }
+      .header-actions-wrapper { gap: 10px; }
+      .nav-links { gap: 6px; }
+      .nav-btn { padding: 4px 10px; font-size: 0.78rem; border-radius: 6px; gap: 5px; }
+      .nav-btn svg { width: 14px; height: 14px; }
+      .nav-btn:hover { transform: none; }
+      .action-group { gap: 4px; }
+      .action-item { position: relative; gap: 0; }
+      .action-item span { display: none; }                 /* labels become tooltips */
+      .btn-icon { padding: 4px; border-radius: 6px; width: 28px; height: 28px; box-shadow: none; }
+      .btn-icon svg { width: 15px; height: 15px; }
+      .btn-icon:hover { transform: none; }
+      .file-status { font-size: 0.78rem; max-width: 240px; }
+      .theme-toggle { width: 42px; height: 22px; padding: 2px; }
+      .theme-ball { width: 18px; height: 18px; left: 2px; font-size: 11px; }
+      body.dark-mode .theme-ball { transform: translateX(20px); }
+      input[type="text"], select { padding: 4px 8px; font-size: 0.78rem; border-radius: 6px; }
+      .form-grid { gap: 6px; }
+      .btn-primary { padding: 6px 14px; font-size: 0.85rem; border-radius: 8px; gap: 6px; }
+      .btn-primary svg { width: 16px; height: 16px; }
+      /* trash count badge (the text label is hidden) */
+      .action-item[data-count]:not([data-count="0"])::after {
+        content: attr(data-count);
+        position: absolute; top: -5px; right: -5px;
+        min-width: 15px; height: 15px; padding: 0 3px; border-radius: 8px;
+        background: #ef4444; color: #fff; font-size: 0.6rem; font-weight: 700;
+        display: flex; align-items: center; justify-content: center;
+      }
     </style>
   </head>
   <body>
+    <script>try { if (localStorage.getItem('links_dark') === '1') document.body.classList.add('dark-mode'); } catch (e) { }</script>
     <header class="header-container">
       <div class="top-bar">
         <div class="logo-section">
@@ -545,12 +592,20 @@
 
           <div class="action-group">
             <div class="action-item">
-              <button class="btn-icon" onclick="exportToJSON()" title="Export JSON"><i data-lucide="download" size="14"></i></button>
+              <button class="btn-icon" onclick="exportToJSON()" title="Export links (JSON)"><i data-lucide="download" size="14"></i></button>
               <span>Export</span>
             </div>
             <div class="action-item">
-              <button class="btn-icon" onclick="triggerImport()" title="Import JSON"><i data-lucide="upload" size="14"></i></button>
+              <button class="btn-icon" onclick="triggerImport()" title="Import links (JSON)"><i data-lucide="upload" size="14"></i></button>
               <span>Import</span>
+            </div>
+            <div class="action-item">
+              <button class="btn-icon" onclick="openTrash()" title="Deleted links - restore them here"><i data-lucide="trash" size="14"></i></button>
+              <span id="trashLabel">Trash</span>
+            </div>
+            <div class="action-item">
+              <button class="btn-icon" onclick="undoDelete()" title="Undo last delete"><i data-lucide="undo-2" size="14"></i></button>
+              <span>Undo</span>
             </div>
             <div class="action-item">
               <button id="folderBtn" class="btn-icon" title="Pick sync folder (e.g. D:\MY FOLDER\Sync_data)"><i data-lucide="folder-open" size="14"></i></button>
@@ -594,8 +649,11 @@
       document.addEventListener('DOMContentLoaded', async () => {
         document.getElementById('syncBtn').onclick = () => syncFromFile();
         document.getElementById('folderBtn').onclick = () => pickFolder();
+        if (document.body.classList.contains('dark-mode')) { const b = document.getElementById('themeBall'); if (b) b.textContent = '☀️'; }
         loadLinks();
         initFileHandle(); // connect to saved_links.json (loads it if permission is still granted)
+        refreshTrashLabel();
+        setTimeout(() => { if (!linksHandle) showToast('⚠ No sync folder - click Folder to keep a backup file'); }, 3000);
         if (window.lucide) lucide.createIcons();
 
         // Handle category input locking
@@ -635,6 +693,25 @@
       let linksHandle = null;
       let linksPerm = 'none'; // 'none' | 'granted' | 'prompt'
       let warnedNoPerm = false;
+      // sharedMode: links live in the "links" key of My Notes' sync file (notes_data.json) - no folder picker needed
+      let sharedMode = localStorage.getItem('links_mode') === 'notesfile';
+      let fileSynced = false;      // true once this session has read the file and brought both sides in line
+      let fileUnreadable = false;  // file exists but is not valid links JSON -> never overwrite it
+
+      // union of two link sets (browser links first, then links that only exist in the file)
+      function mergeLinks(fileData, local) {
+        const out = {};
+        const cats = Object.keys(local).concat(Object.keys(fileData).filter(k => !(k in local)));
+        cats.forEach(c => {
+          const seen = new Set();
+          out[c] = [];
+          (local[c] || []).concat(fileData[c] || []).forEach(l => {
+            const k = ((l && l.name) || '') + '\n' + ((l && l.url) || '');
+            if (!seen.has(k)) { seen.add(k); out[c].push(l); }
+          });
+        });
+        return out;
+      }
 
       function _openIDB() {
         return new Promise((res, rej) => {
@@ -658,8 +735,9 @@
           el.textContent = '📂 Pick folder'; el.style.color = '#d97706';
           el.title = 'Click the Folder button and choose D:\\MY FOLDER\\Sync_data';
         } else if (linksPerm === 'granted') {
-          el.textContent = '🟢 ' + linksHandle.name; el.style.color = '#10b981';
-          el.title = 'Saving to ' + linksHandle.name;
+          const folder = sharedMode ? localStorage.getItem('myNotes.syncFolderName') : localStorage.getItem('links_syncFolderName');
+          el.textContent = '📄 ' + (folder ? folder + ' / ' : '') + linksHandle.name + (sharedMode ? ' (links)' : ''); el.style.color = '#10b981';
+          el.title = 'Saving to ' + (folder ? folder + ' / ' : '') + linksHandle.name;
         } else {
           el.textContent = '⚠ Click 🔄 to reconnect'; el.style.color = '#d97706';
           el.title = 'Browser needs permission again to use ' + linksHandle.name;
@@ -678,25 +756,70 @@
       const isLinksData = d => d && typeof d === 'object' && !Array.isArray(d) && Object.values(d).every(v => Array.isArray(v));
 
       async function writeFile(h) {
+        const local = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
+        let out = JSON.stringify(local, null, 2);
+        if (sharedMode) {
+          // the file also holds My Notes data: change only the "links" key, never anything else
+          let o;
+          try { o = JSON.parse(await (await h.getFile()).text()); } catch (e) { o = null; }
+          if (!o || typeof o !== 'object' || Array.isArray(o)) throw new Error('notes_data.json could not be read safely - left untouched');
+          o.links = local;
+          out = JSON.stringify(o, null, 2);
+        }
         const w = await h.createWritable();
-        await w.write(JSON.stringify(JSON.parse(localStorage.getItem(LINKS_KEY) || '{}'), null, 2));
+        await w.write(out);
         await w.close();
         localStorage.removeItem(DIRTY_KEY);
       }
 
       // Bring browser and file in line. askOnConflict: used when a folder is first picked.
-      async function loadFromFile(h, askOnConflict = false) {
+      async function loadFromFile(h, askOnConflict = false, notify = false) {
         const txt = await (await h.getFile()).text();
         const local = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
-        if (!txt.trim()) { await writeFile(h); showToast('✓ ' + h.name + ' created'); return; }
-        const fileData = JSON.parse(txt);
-        if (!isLinksData(fileData)) { showToast('⚠ ' + h.name + ' is not a links file'); return; }
-        if (JSON.stringify(fileData) === JSON.stringify(local)) { localStorage.removeItem(DIRTY_KEY); return; }
+        if (!txt.trim()) { await writeFile(h); fileSynced = true; fileUnreadable = false; showToast('✓ ' + h.name + ' created'); return; }
+        let fileData;
+        try {
+          const o = JSON.parse(txt);
+          fileData = sharedMode ? ((o && typeof o === 'object' && !Array.isArray(o)) ? (o.links || {}) : null) : o;
+        } catch (e) { fileData = null; }
+        if (!isLinksData(fileData)) {
+          fileUnreadable = true;
+          showToast('⚠ ' + h.name + ' is not a valid links file - left untouched (browser links are kept)');
+          return;
+        }
+        fileUnreadable = false;
+        if (JSON.stringify(fileData) === JSON.stringify(local)) {
+          localStorage.removeItem(DIRTY_KEY); fileSynced = true;
+          if (notify) showToast('✓ Already in sync (' + countLinks(local) + ' links)');
+          return;
+        }
+
+        const bothHaveData = Object.keys(fileData).length > 0 && Object.keys(local).length > 0;
+        // First sync of this session and both sides have links: merge, never replace one with the other
+        if (bothHaveData && !askOnConflict && !fileSynced) {
+          const merged = mergeLinks(fileData, local);
+          localStorage.setItem(LINKS_KEY, JSON.stringify(merged));
+          await writeFile(h);
+          fileSynced = true;
+          loadLinks(document.getElementById("category-select").value || null);
+          showToast('✓ Merged browser and file links (' + countLinks(merged) + ' links)');
+          return;
+        }
 
         let useLocal = Object.keys(fileData).length === 0 && Object.keys(local).length > 0;
         if (!useLocal && Object.keys(local).length > 0) {
           if (askOnConflict) {
-            useLocal = !confirm(`Browser and file have different links.\n\nOK = load from file (${countLinks(fileData)} links)\nCancel = keep browser links (${countLinks(local)} links) and save them to the file`);
+            const choice = confirm(`Browser and file have different links.\n\nOK = MERGE both (keeps everything: ${countLinks(fileData)} in file + ${countLinks(local)} in browser)\nCancel = keep browser links only and overwrite the file`);
+            if (choice) {
+              const merged = mergeLinks(fileData, local);
+              localStorage.setItem(LINKS_KEY, JSON.stringify(merged));
+              await writeFile(h);
+              fileSynced = true;
+              loadLinks(document.getElementById("category-select").value || null);
+              showToast('✓ Merged (' + countLinks(merged) + ' links)');
+              return;
+            }
+            useLocal = true;
           } else {
             useLocal = localStorage.getItem(DIRTY_KEY) === '1'; // browser has newer unsaved changes
           }
@@ -708,31 +831,96 @@
           loadLinks(document.getElementById("category-select").value || null);
           showToast('✓ Loaded ' + countLinks(fileData) + ' links from ' + h.name);
         }
+        fileSynced = true;
       }
+
+      // Handles saved by My Notes (same browser storage): its folder, and a file inside it.
+      // Used to open the SAME Sync_data folder without wandering through Windows folders.
+      async function getNotesHandles() {
+        const out = { dir: null, file: null };
+        try {
+          if (!indexedDB.databases) return out;
+          const dbs = await indexedDB.databases();
+          if (!dbs.some(d => d.name === 'myNotesFileDB')) return out;   // never create the DB from here
+          const db = await new Promise((res, rej) => { const r = indexedDB.open('myNotesFileDB', 1); r.onsuccess = e => res(e.target.result); r.onerror = () => rej(r.error); });
+          if (!db.objectStoreNames.contains('handles')) { db.close(); return out; }
+          const get = key => new Promise(res => { const q = db.transaction('handles', 'readonly').objectStore('handles').get(key); q.onsuccess = () => res(q.result || null); q.onerror = () => res(null); });
+          out.dir = await get('syncDirHandle');
+          out.file = await get('notesHandle');
+          db.close();
+        } catch (e) { }
+        return out;
+      }
+
+      // Read at page load, so the click handler below can open the picker IMMEDIATELY
+      // (browsers only allow the picker right after a click, like My Notes does it).
+      let notesHandlesCache = { dir: null, file: null };
+      getNotesHandles().then(h => { notesHandlesCache = h; });
 
       async function pickFolder() {
         if (!window.showDirectoryPicker) { alert('Folder sync needs Chrome or Edge.'); return; }
+        let step = 'start';
         try {
-          const dir = await window.showDirectoryPicker({ id: 'myLinksSync', mode: 'readwrite' });
-          if (await dir.requestPermission({ mode: 'readwrite' }) !== 'granted') { showToast('Permission denied'); return; }
+          let dir = null;
+          // 1) reuse the folder My Notes already saved (no picker at all)
+          if (notesHandlesCache.dir) {
+            step = 'reusing My Notes folder';
+            try { if (await notesHandlesCache.dir.requestPermission({ mode: 'readwrite' }) === 'granted') dir = notesHandlesCache.dir; } catch (e) { dir = null; }
+          }
+          // 1b) No saved folder from My Notes: offer to keep the links inside My Notes' own sync file
+          if (!dir && notesHandlesCache.file) {
+            step = 'connecting to the My Notes sync file';
+            const useShared = confirm('Connect My Links to your sync file without the Windows folder picker?\n\n'
+              + 'OK = store My Links inside My Notes\' sync file (' + notesHandlesCache.file.name + ', in your Sync_data folder). My Notes data is not touched.\n'
+              + 'Cancel = try the folder picker instead.');
+            if (useShared) {
+              sharedMode = true;
+              localStorage.setItem('links_mode', 'notesfile');
+              const h = notesHandlesCache.file;
+              if (await h.requestPermission({ mode: 'readwrite' }) !== 'granted') { sharedMode = false; localStorage.removeItem('links_mode'); alert('Permission was not granted for ' + h.name); return; }
+              linksHandle = h; linksPerm = 'granted'; warnedNoPerm = false; fileSynced = false;
+              step = 'reading the sync file';
+              updateFileStatus();
+              await loadFromFile(h, true);
+              showToast('✓ My Links is now saved inside ' + h.name);
+              return;
+            }
+          }
+          // 2) otherwise exactly the picker call My Notes makes, with no awaits before it
+          if (!dir) {
+            step = 'folder picker';
+            dir = await window.showDirectoryPicker({ id: 'myNotesSync', mode: 'readwrite' });
+          }
+          step = 'asking permission for ' + dir.name;
+          if (await dir.requestPermission({ mode: 'readwrite' }) !== 'granted') { alert('Permission was not granted for the folder "' + dir.name + '".'); return; }
+          localStorage.setItem('links_syncFolderName', dir.name);
+          step = 'creating/opening saved_links.json in ' + dir.name;
           const h = await dir.getFileHandle('saved_links.json', { create: true });
           linksHandle = h; linksPerm = 'granted'; warnedNoPerm = false;
+          step = 'remembering the folder';
           await _putHandle(h);
           updateFileStatus();
+          step = 'reading saved_links.json';
           await loadFromFile(h, true);
-        } catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Could not open folder'); } }
+          showToast('✓ Connected to ' + dir.name + ' / saved_links.json');
+        } catch (e) {
+          console.error(e);
+          updateFileStatus();
+          if (e.name === 'AbortError') { alert('The folder picker closed without a folder (step: ' + step + '). It was cancelled, or the browser/Windows refused it. Try once more; if it repeats, tell me.'); return; }
+          alert('Folder sync stopped at: ' + step + '\n\n' + (e.name || 'Error') + ': ' + (e.message || e));
+        }
       }
 
       async function syncFromFile() {
         if (!linksHandle) return pickFolder();
         if (!(await ensurePermission(linksHandle, true))) { linksPerm = 'prompt'; updateFileStatus(); showToast('Permission denied'); return; }
         linksPerm = 'granted'; warnedNoPerm = false; updateFileStatus();
-        try { await loadFromFile(linksHandle); }
+        try { showToast('Syncing…'); await loadFromFile(linksHandle, false, true); }
         catch (e) { console.error(e); showToast('⚠ Sync failed — is the file valid JSON?'); }
       }
 
       async function initFileHandle() {
-        const h = await _getHandle();
+        const h = sharedMode ? (await getNotesHandles()).file : await _getHandle();
         linksHandle = h;
         if (!h) { updateFileStatus(); return; }
         if (await ensurePermission(h, false)) {
@@ -759,8 +947,31 @@
       }
 
       // Called after every change: write the browser's links to saved_links.json
+      // downloads a dated copy of the links (once a day automatically, and before an import)
+      function downloadLinksBackup(tag) {
+        try {
+          const data = localStorage.getItem(LINKS_KEY);
+          if (!data || data === '{}') return;
+          const day = new Date().toISOString().slice(0, 10);
+          const blob = new Blob([data], { type: 'application/json' });
+          const a = document.createElement('a');
+          a.href = URL.createObjectURL(blob);
+          a.download = 'my_links_backup_' + day + (tag ? '_' + tag : '') + '.json';
+          document.body.appendChild(a); a.click(); a.remove();
+        } catch (e) { console.warn('backup failed', e); }
+      }
+      function maybeDailyLinksBackup() {
+        try {
+          const day = new Date().toISOString().slice(0, 10);
+          if (localStorage.getItem('links_lastBackupDay') === day) return;
+          localStorage.setItem('links_lastBackupDay', day);
+          downloadLinksBackup('auto');
+        } catch (e) { }
+      }
+
       async function syncLinksToFile() {
         localStorage.setItem(DIRTY_KEY, '1'); // cleared once the file is written
+        maybeDailyLinksBackup();
         if (!linksHandle) {
           updateFileStatus();
           if (!warnedNoPerm) { warnedNoPerm = true; showToast("⚠ Saved in browser only — click Folder to pick Sync_data"); }
@@ -772,6 +983,14 @@
           return false;
         }
         try {
+          if (!fileSynced) {
+            // this session has not read the file yet: read/merge first so a fresh browser can never wipe it
+            await loadFromFile(linksHandle, false);
+          }
+          if (fileUnreadable || !fileSynced) {
+            showToast("⚠ File not overwritten (could not read it safely) - links are kept in the browser");
+            return false;
+          }
           await writeFile(linksHandle);
           linksPerm = 'granted'; warnedNoPerm = false; updateFileStatus();
           showToast("✓ Saved to " + linksHandle.name);
@@ -783,6 +1002,79 @@
         }
       }
       // ─────────────────────────────────────────────────────────────────
+
+      // ── Trash: deleted links / categories can be restored (like My Notes) ──
+      const TRASH_KEY = 'links_trash';
+      let trash = [];
+      try { trash = JSON.parse(localStorage.getItem(TRASH_KEY)) || []; } catch (e) { trash = []; }
+      const saveTrash = () => { try { localStorage.setItem(TRASH_KEY, JSON.stringify(trash)); } catch (e) { } };
+      function refreshTrashLabel() {
+        const el = document.getElementById('trashLabel');
+        if (el) el.textContent = trash.length ? 'Trash (' + trash.length + ')' : 'Trash';
+        const item = el && el.closest('.action-item');
+        if (item) { item.dataset.count = trash.length; const b = item.querySelector('button'); if (b) b.title = (trash.length ? 'Trash (' + trash.length + ') - restore deleted links' : 'Trash is empty'); }
+      }
+      function trashLinks(category, links) {
+        const now = new Date().toISOString();
+        (links || []).forEach(l => trash.push({ category, link: l, deletedAt: now }));
+        if (trash.length > 100) trash = trash.slice(trash.length - 100);
+        saveTrash(); refreshTrashLabel();
+      }
+      function restoreFromTrash(i) {
+        const e = trash[i];
+        if (!e) return;
+        const all = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
+        if (!all[e.category]) all[e.category] = [];
+        all[e.category].push(e.link);
+        localStorage.setItem(LINKS_KEY, JSON.stringify(all));
+        localStorage.setItem('backup_customCategories', JSON.stringify(all));
+        trash.splice(i, 1);
+        saveTrash(); refreshTrashLabel();
+        loadLinks(document.getElementById("category-select").value || null);
+        syncLinksToFile();
+        showToast('✓ Restored to ' + e.category);
+      }
+      function closeLinksModal() { const o = document.getElementById('nmOverlay'); if (o) o.remove(); }
+      function openTrash() {
+        closeLinksModal();
+        const ov = document.createElement('div');
+        ov.id = 'nmOverlay'; ov.className = 'nm-overlay';
+        const box = document.createElement('div'); box.className = 'nm-box';
+        const head = document.createElement('div'); head.className = 'nm-head';
+        head.textContent = 'Trash';
+        const x = document.createElement('button'); x.className = 'nm-btn'; x.textContent = '✕'; x.onclick = closeLinksModal;
+        head.appendChild(x);
+        const body = document.createElement('div'); body.className = 'nm-body';
+        function btn(label, fn, danger) { const b = document.createElement('button'); b.className = 'nm-btn' + (danger ? ' danger' : ''); b.textContent = label; b.onclick = fn; return b; }
+        function render() {
+          body.innerHTML = '';
+          if (!trash.length) { body.textContent = 'Trash is empty.'; return; }
+          const top = document.createElement('div');
+          top.style.cssText = 'display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;opacity:.75;font-size:.78rem;';
+          top.textContent = 'Last ' + trash.length + ' deleted links (oldest are dropped after 100)';
+          top.appendChild(btn('Empty trash', () => { if (confirm('Permanently delete everything in Trash?')) { trash = []; saveTrash(); refreshTrashLabel(); render(); } }, true));
+          body.appendChild(top);
+          for (let i = trash.length - 1; i >= 0; i--) {
+            const e = trash[i];
+            const row = document.createElement('div'); row.className = 'nm-row';
+            const info = document.createElement('div'); info.className = 'info';
+            const t = document.createElement('div'); t.className = 't'; t.textContent = (e.link && e.link.name) || '(no name)';
+            const u = document.createElement('div'); u.className = 'u';
+            u.textContent = e.category + ' · ' + ((e.link && e.link.url) || '') + ' · deleted ' + new Date(e.deletedAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' });
+            info.appendChild(t); info.appendChild(u);
+            row.appendChild(info);
+            row.appendChild(btn('Restore', () => { restoreFromTrash(i); render(); }));
+            row.appendChild(btn('Delete forever', () => { trash.splice(i, 1); saveTrash(); refreshTrashLabel(); render(); }, true));
+            body.appendChild(row);
+          }
+        }
+        render();
+        box.appendChild(head); box.appendChild(body); ov.appendChild(box);
+        ov.addEventListener('mousedown', e => { if (e.target === ov) closeLinksModal(); });
+        document.body.appendChild(ov);
+        const onKey = e => { if (e.key === 'Escape') { closeLinksModal(); document.removeEventListener('keydown', onKey, true); } };
+        document.addEventListener('keydown', onKey, true);
+      }
 
       function loadLinks(filterCategory = null) {
         if (!localStorage.getItem("customCategories")) {
@@ -1084,6 +1376,7 @@ function triggerImport() {
         
         if (!confirm(`Are you sure you want to delete "${linkName}"?`)) return;
 
+        trashLinks(category, [customCategories[category][index]]);
         deletedBackup = {
           category,
           link: customCategories[category][index],
@@ -1100,19 +1393,29 @@ function triggerImport() {
       function deleteCategory(category) {
         if (!confirm(`Are you sure you want to delete the entire category "${category}" and ALL its links?`)) return;
         const all = JSON.parse(localStorage.getItem("customCategories")) || {};
+        trashLinks(category, all[category] || []);
+        deletedBackup = { category, links: all[category] || [], wholeCategory: true };
         delete all[category];
         localStorage.setItem("customCategories", JSON.stringify(all));
+        localStorage.setItem("backup_customCategories", JSON.stringify(all));
         syncLinksToFile();
         loadLinks();
-        showToast(`Category "${category}" deleted`);
+        showToast(`Category "${category}" deleted - click Undo to bring it back`);
       }
 
       function undoDelete() {
         if (!deletedBackup) return alert("Nothing to undo");
         const customCategories = JSON.parse(localStorage.getItem("customCategories")) || {};
-        const { category, link, index } = deletedBackup;
-        if (!customCategories[category]) customCategories[category] = [];
-        customCategories[category].splice(index, 0, link);
+        const { category, link, index, links, wholeCategory } = deletedBackup;
+        const n = wholeCategory ? (links || []).length : 1;   // they leave the Trash again
+        trash.splice(Math.max(0, trash.length - n), n); saveTrash(); refreshTrashLabel();
+        if (wholeCategory) {
+          customCategories[category] = (customCategories[category] || []).concat(links || []);
+          showToast(`Category "${category}" restored`);
+        } else {
+          if (!customCategories[category]) customCategories[category] = [];
+          customCategories[category].splice(index, 0, link);
+        }
         deletedBackup = null;
         localStorage.setItem("customCategories", JSON.stringify(customCategories));
         loadLinks();
@@ -1165,7 +1468,8 @@ function triggerImport() {
                 !Object.values(data).every(v => Array.isArray(v))) {
               return alert("This file is not a My Links backup.");
             }
-            if (!confirm("This will replace all current links. Continue?")) return;
+            if (!confirm("This will replace all current links. Continue?\n(A backup of your current links is downloaded first.)")) return;
+            downloadLinksBackup('before_import');
             localStorage.setItem("customCategories", JSON.stringify(data));
             loadLinks();
             syncLinksToFile();
@@ -1182,6 +1486,7 @@ function triggerImport() {
         const isDark = document.body.classList.contains("dark-mode");
         const ball = document.getElementById("themeBall");
         ball.textContent = isDark ? "☀️" : "🌙";
+        try { localStorage.setItem('links_dark', isDark ? '1' : '0'); } catch (e) { }
         setTimeout(() => { if (window.lucide) lucide.createIcons(); }, 10);
       }
 
@@ -1206,7 +1511,7 @@ function triggerImport() {
       document.addEventListener("keydown", function (e) {
         if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
           e.preventDefault();
-          showToast("Saving page is disabled 🚫");
+          syncLinksToFile();   // saves to the sync file (and says so)
         }
       });
     </script>

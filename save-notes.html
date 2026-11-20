@@ -990,6 +990,36 @@
     #sizeMenu .size-item.current::after { content: ' \2713'; }
     #sizeMenu .size-item.current:hover { background: var(--primary); color: #fff; }
 
+    /* Dark mode toggle (top bar) */
+    .theme-toggle {
+      position: relative;
+      width: 42px;
+      height: 22px;
+      padding: 2px;
+      border-radius: 20px;
+      background: #e2e8f0;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background .2s;
+    }
+    .theme-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
+    .theme-ball {
+      position: absolute;
+      left: 2px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, .15);
+      transition: transform .3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+    html[data-theme="dark"] .theme-toggle { background: #334155; }
+    html[data-theme="dark"] .theme-ball { transform: translateX(20px); background: #0f172a; }
+
     /* Toolbar hover highlight */
     .toolbar-actions .btn,
     .toolbar-actions select {
@@ -1173,6 +1203,9 @@
         title="">No file</span>
       <button id="openFileBtn" title="Pick Folder for Sync"><i data-lucide="folder-open"></i></button>
       <button id="syncBtn" title="Sync Notes to File"><i data-lucide="refresh-cw"></i></button>
+      <div id="themeToggle" class="theme-toggle" role="switch" aria-checked="false" tabindex="0" title="Dark mode">
+        <div class="theme-ball">🌙</div>
+      </div>
       <div class="settings-wrap">
         <button id="settingsBtn" title="Editor Settings"><i data-lucide="settings"></i></button>
         <div id="settingsMenu" class="settings-menu">
@@ -1635,6 +1668,9 @@
       async function _getHandle() {
         try { const db = await _openIDB(); return new Promise(r => { const q = db.transaction(_IDB.store, 'readonly').objectStore(_IDB.store).get(_IDB.key); q.onsuccess = e => r(e.target.result || null); q.onerror = () => r(null); }); } catch { return null; }
       }
+      async function _putDirHandle(d) {
+        try { const db = await _openIDB(); return new Promise(r => { const tx = db.transaction(_IDB.store, 'readwrite'); tx.objectStore(_IDB.store).put(d, 'syncDirHandle'); tx.oncomplete = r; tx.onerror = r; }); } catch { }
+      }
       async function _putHandle(h) {
         try { const db = await _openIDB(); return new Promise(r => { const tx = db.transaction(_IDB.store, 'readwrite'); tx.objectStore(_IDB.store).put(h, _IDB.key); tx.oncomplete = r; tx.onerror = r; }); } catch { }
       }
@@ -1674,8 +1710,14 @@
       }
 
       async function writeFileData(h) {
+        // keep anything else stored in this file (e.g. "links" written by My Links)
+        const extra = {};
+        try {
+          const o = JSON.parse(await (await h.getFile()).text());
+          if (o && typeof o === 'object') Object.keys(o).forEach(k => { if (k !== 'categories' && k !== 'notesData' && k !== 'deleted') extra[k] = o[k]; });
+        } catch (e) { }
         const w = await h.createWritable();
-        await w.write(JSON.stringify({ categories, notesData, deleted: tomb }, null, 2));
+        await w.write(JSON.stringify(Object.assign({}, extra, { categories, notesData, deleted: tomb }), null, 2));
         await w.close();
       }
 
@@ -1763,6 +1805,7 @@
           const h = await dirHandle.getFileHandle('notes_data.json', { create: true });
           fileHandle = h; filePerm = 'granted'; warnedNoPerm = false;
           await _putHandle(h);
+          await _putDirHandle(dirHandle);   // lets My Links reuse this same folder
           updateFileStatus();
           await loadAndMerge(h);
         } catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Open failed'); } }
@@ -2646,12 +2689,20 @@
 
       // ---------- Dark mode ----------
       const settingDark = document.getElementById('settingDark');
-      settingDark.checked = document.documentElement.getAttribute('data-theme') === 'dark';
-      settingDark.addEventListener('change', () => {
-        const on = settingDark.checked;
+      const themeToggle = document.getElementById('themeToggle');
+      function setDark(on) {
         if (on) document.documentElement.setAttribute('data-theme', 'dark');
         else document.documentElement.removeAttribute('data-theme');
+        settingDark.checked = on;
+        themeToggle.setAttribute('aria-checked', on ? 'true' : 'false');
+        themeToggle.querySelector('.theme-ball').textContent = on ? '☀️' : '🌙';
         try { localStorage.setItem('notes_dark', on ? '1' : '0'); } catch (e) { }
+      }
+      setDark(document.documentElement.getAttribute('data-theme') === 'dark');
+      settingDark.addEventListener('change', () => setDark(settingDark.checked));
+      themeToggle.addEventListener('click', () => setDark(document.documentElement.getAttribute('data-theme') !== 'dark'));
+      themeToggle.addEventListener('keydown', e => {
+        if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); themeToggle.click(); }
       });
 
       // Horizontal Line logic
