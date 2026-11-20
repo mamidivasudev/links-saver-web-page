@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>My Favorite Links</title>
-    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -553,14 +553,14 @@
               <span>Import</span>
             </div>
             <div class="action-item">
-              <button id="openFileBtn" class="btn-icon" title="Pick Sync Folder"><i data-lucide="folder-open" size="14"></i></button>
-              <span>Pick Folder</span>
+              <button id="folderBtn" class="btn-icon" title="Pick sync folder (e.g. D:\MY FOLDER\Sync_data)"><i data-lucide="folder-open" size="14"></i></button>
+              <span>Folder</span>
             </div>
             <div class="action-item">
-              <button id="syncBtn" class="btn-icon" title="Sync Now"><i data-lucide="refresh-cw" size="14"></i></button>
+              <button id="syncBtn" class="btn-icon" title="Sync with saved_links.json"><i data-lucide="refresh-cw" size="14"></i></button>
               <span>Sync</span>
             </div>
-            <div id="syncStatus" class="file-status">No file connected</div>
+            <div id="syncStatus" class="file-status">Connecting...</div>
           </div>
           
           <div style="width: 1px; height: 20px; background: var(--border-light); margin: 0 5px;"></div>
@@ -591,9 +591,11 @@
     <div id="toast"></div>
 
     <script>
-      document.addEventListener('DOMContentLoaded', () => {
-        initFileHandle();
+      document.addEventListener('DOMContentLoaded', async () => {
+        document.getElementById('syncBtn').onclick = () => syncFromFile();
+        document.getElementById('folderBtn').onclick = () => pickFolder();
         loadLinks();
+        initFileHandle(); // connect to saved_links.json (loads it if permission is still granted)
         if (window.lucide) lucide.createIcons();
 
         // Handle category input locking
@@ -624,32 +626,124 @@
       let deletedBackup = null;
       let dragged = { category: null, index: null };
 
-      // ── File System Access (IndexedDB-persisted handle - Upgraded to Auto-Create inside Folder!) ──────────────
-      let fileHandle = null;
-      const _IDB = { name:'myLinksFileDB', store:'handles', key:'linksHandle' };
+      // ── Server API Sync (Replaces File System API) ──────────────
+      
+      // ── File sync: reads/writes saved_links.json in a folder you pick (no server needed) ──
+      const LINKS_KEY = "customCategories";
+      const DIRTY_KEY = "customCategories_unsynced"; // '1' = browser has changes not yet written to the file
+      const _IDB = { name: 'myLinksFileDB', store: 'handles', key: 'linksHandle' };
+      let linksHandle = null;
+      let linksPerm = 'none'; // 'none' | 'granted' | 'prompt'
+      let warnedNoPerm = false;
 
       function _openIDB() {
-        return new Promise((res,rej) => {
+        return new Promise((res, rej) => {
           const r = indexedDB.open(_IDB.name, 1);
           r.onupgradeneeded = e => e.target.result.createObjectStore(_IDB.store);
           r.onsuccess = e => res(e.target.result);
-          r.onerror   = e => rej(e.target.error);
+          r.onerror = e => rej(e.target.error);
         });
       }
       async function _getHandle() {
-        try { const db = await _openIDB(); return new Promise(r => { const q = db.transaction(_IDB.store,'readonly').objectStore(_IDB.store).get(_IDB.key); q.onsuccess = e => r(e.target.result||null); q.onerror = ()=>r(null); }); } catch { return null; }
+        try { const db = await _openIDB(); return await new Promise(r => { const q = db.transaction(_IDB.store, 'readonly').objectStore(_IDB.store).get(_IDB.key); q.onsuccess = e => r(e.target.result || null); q.onerror = () => r(null); }); } catch { return null; }
       }
       async function _putHandle(h) {
-        try { const db = await _openIDB(); return new Promise(r => { const tx = db.transaction(_IDB.store,'readwrite'); tx.objectStore(_IDB.store).put(h,_IDB.key); tx.oncomplete=r; tx.onerror=r; }); } catch {}
+        try { const db = await _openIDB(); await new Promise(r => { const tx = db.transaction(_IDB.store, 'readwrite'); tx.objectStore(_IDB.store).put(h, _IDB.key); tx.oncomplete = r; tx.onerror = r; }); } catch { }
       }
 
       function updateFileStatus() {
-        const elSync = document.getElementById('syncStatus');
-        if (fileHandle) {
-          const label = '📄 ' + fileHandle.name;
-          if (elSync) { elSync.textContent = label; elSync.style.color = '#10b981'; elSync.title = fileHandle.name; }
+        const el = document.getElementById('syncStatus');
+        if (!el) return;
+        if (!linksHandle) {
+          el.textContent = '📂 Pick folder'; el.style.color = '#d97706';
+          el.title = 'Click the Folder button and choose D:\\MY FOLDER\\Sync_data';
+        } else if (linksPerm === 'granted') {
+          el.textContent = '🟢 ' + linksHandle.name; el.style.color = '#10b981';
+          el.title = 'Saving to ' + linksHandle.name;
         } else {
-          if (elSync) { elSync.textContent = 'No file connected'; elSync.style.color = '#666'; elSync.title = 'No file connected'; }
+          el.textContent = '⚠ Click 🔄 to reconnect'; el.style.color = '#d97706';
+          el.title = 'Browser needs permission again to use ' + linksHandle.name;
+        }
+      }
+
+      async function ensurePermission(h, ask) {
+        try {
+          let p = await h.queryPermission({ mode: 'readwrite' });
+          if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' });
+          return p === 'granted';
+        } catch (e) { return false; }
+      }
+
+      const countLinks = d => Object.values(d || {}).reduce((a, l) => a + (Array.isArray(l) ? l.length : 0), 0);
+      const isLinksData = d => d && typeof d === 'object' && !Array.isArray(d) && Object.values(d).every(v => Array.isArray(v));
+
+      async function writeFile(h) {
+        const w = await h.createWritable();
+        await w.write(JSON.stringify(JSON.parse(localStorage.getItem(LINKS_KEY) || '{}'), null, 2));
+        await w.close();
+        localStorage.removeItem(DIRTY_KEY);
+      }
+
+      // Bring browser and file in line. askOnConflict: used when a folder is first picked.
+      async function loadFromFile(h, askOnConflict = false) {
+        const txt = await (await h.getFile()).text();
+        const local = JSON.parse(localStorage.getItem(LINKS_KEY) || '{}');
+        if (!txt.trim()) { await writeFile(h); showToast('✓ ' + h.name + ' created'); return; }
+        const fileData = JSON.parse(txt);
+        if (!isLinksData(fileData)) { showToast('⚠ ' + h.name + ' is not a links file'); return; }
+        if (JSON.stringify(fileData) === JSON.stringify(local)) { localStorage.removeItem(DIRTY_KEY); return; }
+
+        let useLocal = Object.keys(fileData).length === 0 && Object.keys(local).length > 0;
+        if (!useLocal && Object.keys(local).length > 0) {
+          if (askOnConflict) {
+            useLocal = !confirm(`Browser and file have different links.\n\nOK = load from file (${countLinks(fileData)} links)\nCancel = keep browser links (${countLinks(local)} links) and save them to the file`);
+          } else {
+            useLocal = localStorage.getItem(DIRTY_KEY) === '1'; // browser has newer unsaved changes
+          }
+        }
+        if (useLocal) { await writeFile(h); showToast('✓ Saved browser links to ' + h.name); }
+        else {
+          localStorage.setItem(LINKS_KEY, JSON.stringify(fileData));
+          localStorage.removeItem(DIRTY_KEY);
+          loadLinks(document.getElementById("category-select").value || null);
+          showToast('✓ Loaded ' + countLinks(fileData) + ' links from ' + h.name);
+        }
+      }
+
+      async function pickFolder() {
+        if (!window.showDirectoryPicker) { alert('Folder sync needs Chrome or Edge.'); return; }
+        try {
+          const dir = await window.showDirectoryPicker({ id: 'myLinksSync', mode: 'readwrite' });
+          if (await dir.requestPermission({ mode: 'readwrite' }) !== 'granted') { showToast('Permission denied'); return; }
+          const h = await dir.getFileHandle('saved_links.json', { create: true });
+          linksHandle = h; linksPerm = 'granted'; warnedNoPerm = false;
+          await _putHandle(h);
+          updateFileStatus();
+          await loadFromFile(h, true);
+        } catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Could not open folder'); } }
+      }
+
+      async function syncFromFile() {
+        if (!linksHandle) return pickFolder();
+        if (!(await ensurePermission(linksHandle, true))) { linksPerm = 'prompt'; updateFileStatus(); showToast('Permission denied'); return; }
+        linksPerm = 'granted'; warnedNoPerm = false; updateFileStatus();
+        try { await loadFromFile(linksHandle); }
+        catch (e) { console.error(e); showToast('⚠ Sync failed — is the file valid JSON?'); }
+      }
+
+      async function initFileHandle() {
+        const h = await _getHandle();
+        linksHandle = h;
+        if (!h) { updateFileStatus(); return; }
+        if (await ensurePermission(h, false)) {
+          linksPerm = 'granted'; updateFileStatus();
+          try { await loadFromFile(h); } catch (e) { console.warn('Load failed', e); }
+        } else {
+          // Browser forgot permission (normal after restart) — it can only be asked on a click
+          linksPerm = 'prompt'; updateFileStatus();
+          showToast('Click anywhere to load links from ' + h.name);
+          const once = () => { document.removeEventListener('pointerdown', once, true); if (linksPerm !== 'granted') syncFromFile(); };
+          document.addEventListener('pointerdown', once, true);
         }
       }
 
@@ -664,82 +758,29 @@
         }, 2000);
       }
 
+      // Called after every change: write the browser's links to saved_links.json
       async function syncLinksToFile() {
-        if (!fileHandle) return;
-        try {
-          let p = await fileHandle.queryPermission({mode:'readwrite'});
-          if (p!=='granted') p = await fileHandle.requestPermission({mode:'readwrite'});
-          if (p!=='granted') return;
-          const data = localStorage.getItem("customCategories") || "{}";
-          const w = await fileHandle.createWritable();
-          await w.write(data);
-          await w.close();
+        localStorage.setItem(DIRTY_KEY, '1'); // cleared once the file is written
+        if (!linksHandle) {
           updateFileStatus();
-          showToast("✓ Synced to file");
-        } catch(e) { console.warn('Sync failed', e); }
-      }
-
-      async function openLinksFile() {
-        if (!window.showDirectoryPicker) { alert('Directory Picker is not supported in this browser.'); return; }
-        try {
-          const dirHandle = await window.showDirectoryPicker();
-          
-          if (await dirHandle.requestPermission({mode:'readwrite'}) !== 'granted') {
-            showToast('Permission denied'); return;
-          }
-
-          // Auto-get or Auto-create saved_links.json inside the picked directory!
-          const h = await dirHandle.getFileHandle('saved_links.json', { create: true });
-          fileHandle = h;
-          await _putHandle(h);
-
-          const file = await h.getFile();
-          const txt = await file.text();
-          if (txt && txt.trim()) {
-            try {
-              const p = JSON.parse(txt);
-              const isLocalEmpty = Object.keys(JSON.parse(localStorage.getItem("customCategories") || "{}")).length === 0;
-              if (isLocalEmpty || confirm(`Load links from "${h.name}"?`)) {
-                localStorage.setItem("customCategories", JSON.stringify(p));
-                loadLinks();
-                showToast('✓ Links loaded');
-              }
-            } catch(e) { console.warn("Existing file was not valid JSON or empty."); }
-          } else {
-            // New empty file, sync current links to it immediately
-            await syncLinksToFile();
-          }
-          
-          updateFileStatus();
-        } catch(e) {
-          if (e.name !== 'AbortError') {
-            console.error(e);
-            showToast('Sync folder selection failed');
-          }
+          if (!warnedNoPerm) { warnedNoPerm = true; showToast("⚠ Saved in browser only — click Folder to pick Sync_data"); }
+          return false;
         }
-      }
-
-      async function initFileHandle() {
-        const h = await _getHandle();
-        if (h) { 
-          fileHandle=h; 
-          updateFileStatus();
-          try {
-            const isLocalEmpty = Object.keys(JSON.parse(localStorage.getItem("customCategories") || "{}")).length === 0;
-            // Attempt silent restore if permission is already granted and app is empty
-            if (isLocalEmpty && (await h.queryPermission({mode:'readwrite'})) === 'granted') {
-              const txt = await (await h.getFile()).text();
-              const p = JSON.parse(txt);
-              if (p) {
-                localStorage.setItem("customCategories", JSON.stringify(p));
-                loadLinks();
-                showToast('✓ Restored from file');
-              }
-            }
-          } catch(e) {}
+        if (!(await ensurePermission(linksHandle, true))) {
+          linksPerm = 'prompt'; updateFileStatus();
+          if (!warnedNoPerm) { warnedNoPerm = true; showToast("⚠ Saved in browser only — click 🔄 to reconnect"); }
+          return false;
         }
-        document.getElementById('openFileBtn').onclick = openLinksFile;
-        document.getElementById('syncBtn').onclick = syncLinksToFile;
+        try {
+          await writeFile(linksHandle);
+          linksPerm = 'granted'; warnedNoPerm = false; updateFileStatus();
+          showToast("✓ Saved to " + linksHandle.name);
+          return true;
+        } catch (e) {
+          console.warn('Save to file failed', e);
+          showToast("⚠ Could not write " + linksHandle.name);
+          return false;
+        }
       }
       // ─────────────────────────────────────────────────────────────────
 
@@ -847,7 +888,7 @@
             li.addEventListener("dragleave", handleDragLeaveItem);
 
             const a = document.createElement("a");
-            a.href = link.url;
+            a.href = /^\s*javascript:/i.test(link.url || '') ? '#' : link.url;
             a.target = "_blank";
             a.textContent = link.name;
             a.draggable = false; // prevent anchor interfering with dragstart
@@ -1120,13 +1161,20 @@ function triggerImport() {
         reader.onload = function (e) {
           try {
             const data = JSON.parse(e.target.result);
+            if (!data || typeof data !== 'object' || Array.isArray(data) ||
+                !Object.values(data).every(v => Array.isArray(v))) {
+              return alert("This file is not a My Links backup.");
+            }
+            if (!confirm("This will replace all current links. Continue?")) return;
             localStorage.setItem("customCategories", JSON.stringify(data));
             loadLinks();
+            syncLinksToFile();
           } catch (err) {
             alert("Invalid JSON format.");
           }
         };
         reader.readAsText(file);
+        fileInput.value = ""; // allow re-importing the same file
       }
 
       function toggleDarkMode() {

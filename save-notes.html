@@ -10,7 +10,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@400;500;600&family=Lexend:wght@300;400;500;600;700&display=swap"
     rel="stylesheet">
-  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://unpkg.com/lucide@0.460.0/dist/umd/lucide.min.js"></script>
   <style>
     :root {
       --primary: #1d63d2;
@@ -49,7 +49,7 @@
       background: var(--bg-card);
       border-bottom: 1px solid var(--border);
       padding: 0 16px;
-      height: 48px;
+      height: 38px;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -59,19 +59,29 @@
 
     .brand {
       font-weight: 700;
-      font-size: 1.25rem;
+      font-size: 1rem;
       color: var(--primary);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 6px;
+    }
+
+    .brand svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .header-actions button svg {
+      width: 16px;
+      height: 16px;
     }
 
     .header-actions button {
       background: transparent;
       border: 1px solid var(--border);
       color: var(--text-muted);
-      width: 40px;
-      height: 40px;
+      width: 28px;
+      height: 28px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -603,16 +613,42 @@
       flex-direction: column;
       overflow: hidden;
       border: 1px solid var(--border);
+      position: relative;
+    }
+
+    #fabNewBtn {
+      position: absolute;
+      right: 24px;
+      bottom: 48px;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-size: 24px;
+      line-height: 1;
+      cursor: pointer;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 5;
+      transition: transform 0.15s;
+    }
+
+    #fabNewBtn:hover {
+      transform: scale(1.1);
     }
 
     .editor-toolbar {
-      padding: 8px 16px;
+      padding: 4px 12px;
       border-bottom: 1px solid var(--border);
       display: flex;
       align-items: center;
       justify-content: space-between;
       background: #fff;
-      min-height: 44px;
+      min-height: 36px;
     }
 
     .editor-title {
@@ -620,15 +656,37 @@
       font-weight: 600;
     }
 
+    .editor-toolbar {
+      flex-wrap: wrap;
+      row-gap: 4px;
+    }
+
+    /* Breadcrumb always visible; tools wrap to their own row when space is tight */
+    #editorBreadcrumb {
+      flex: 1 1 220px;
+      min-width: 0;
+      overflow: hidden;
+    }
+
+    #bcNote {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
     .toolbar-actions {
       display: flex;
-      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+      align-items: center;
+      gap: 5px;
+      margin-left: auto;
     }
 
     .btn {
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-size: 0.875rem;
+      padding: 4px 9px;
+      border-radius: 6px;
+      font-size: 0.78rem;
       font-weight: 500;
       cursor: pointer;
       border: 1px solid transparent;
@@ -645,6 +703,33 @@
     .btn-primary {
       background: var(--primary);
       color: white;
+    }
+
+    .color-btn {
+      padding: 3px 7px;
+      gap: 4px;
+    }
+
+    .color-btn input[type="color"] {
+      width: 18px;
+      height: 18px;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: none;
+      cursor: pointer;
+    }
+
+    #newNoteBtn {
+      background: #eff6ff;
+      color: var(--primary);
+      border-color: var(--primary);
+      font-weight: 600;
+    }
+
+    #newNoteBtn:hover {
+      background: var(--primary);
+      color: #fff;
     }
 
     .btn-ghost {
@@ -895,12 +980,13 @@
       <i data-lucide="book-open" style="color: var(--primary)"></i>
       My Notes
     </div>
-    <div class="header-actions" style="display:flex;align-items:center;gap:10px;">
+    <div class="header-actions" style="display:flex;align-items:center;gap:6px;">
       <span id="fileStatus"
-        style="font-size:0.72rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+        style="font-size:0.68rem;color:var(--text-muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
         title="">No file</span>
       <button id="openFileBtn" title="Pick Folder for Sync"><i data-lucide="folder-open"></i></button>
       <button id="syncBtn" title="Sync Notes to File"><i data-lucide="refresh-cw"></i></button>
+      <button id="calcBtn" title="Calculator"><i data-lucide="calculator"></i></button>
       <div class="settings-wrap">
         <button id="settingsBtn" title="Editor Settings"><i data-lucide="settings"></i></button>
         <div id="settingsMenu" class="settings-menu">
@@ -965,11 +1051,11 @@
           <div id="catDropWrap" class="cat-drop-wrap">
             <div id="catTrigger" class="cat-trigger">
               <span id="catTriggerLabel">Select category</span>
-              <i data-lucide="chevron-down" size="14" style="flex-shrink:0; opacity:0.7;"></i>
+              <i data-lucide="chevron-down" size="12" style="flex-shrink:0; opacity:0.7;"></i>
             </div>
             <div id="catMenu" class="cat-menu"></div>
           </div>
-          <button class="icon-btn" id="btnAddCat" title="Add Category"><i data-lucide="plus" size="14"></i></button>
+          <button class="icon-btn" id="btnAddCat" title="Add Category"><i data-lucide="plus" size="12"></i></button>
         </div>
       </div>
 
@@ -980,7 +1066,7 @@
           </label>
           <button id="btnBulkDelete" class="btn btn-ghost danger"
             style="padding:4px 8px;font-size:0.75rem;color:var(--danger);">
-            <i data-lucide="trash-2" size="14"></i> Delete (<span id="selectedCount">0</span>)
+            <i data-lucide="trash-2" size="12"></i> Delete (<span id="selectedCount">0</span>)
           </button>
         </div>
         <div id="notesListInner" style="flex:1;overflow-y:auto;overflow-x:hidden !important;"></div>
@@ -988,10 +1074,10 @@
 
       <div class="sidebar-footer">
         <button id="btnExport" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:0.8rem;">
-          <i data-lucide="download" size="14"></i> Export
+          <i data-lucide="download" size="12"></i> Export
         </button>
         <button id="btnImport" class="btn btn-ghost" style="flex:1;justify-content:center;font-size:0.8rem;">
-          <i data-lucide="upload" size="14"></i> Import
+          <i data-lucide="upload" size="12"></i> Import
         </button>
         <input id="importFile" type="file" accept=".json,.txt,text/plain,application/json" style="display:none"
           multiple />
@@ -1003,30 +1089,51 @@
       <div class="editor-card">
         <div class="editor-toolbar">
           <div class="editor-title" id="editorBreadcrumb"
-            style="display:flex;align-items:center;gap:6px;font-size:0.95rem;">
+            style="display:flex;align-items:center;gap:5px;font-size:0.85rem;white-space:nowrap;">
             <span style="color:var(--text-muted);font-weight:400;">📁</span>
             <span id="bcCategory" style="color:var(--primary);font-weight:600;">—</span>
             <span style="color:var(--text-muted);font-weight:300;">›</span>
             <span id="bcNote" style="color:var(--text-muted);font-weight:400;font-size:0.85rem;">No note open</span>
           </div>
           <div class="toolbar-actions">
-            <label class="btn btn-ghost" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 10px;" title="Auto-save with first line as title">
-              <span style="font-size: 0.85rem; font-weight: 500; user-select: none;">Auto Title</span>
+            <label class="btn btn-ghost" style="display:flex;align-items:center;gap:6px;cursor:pointer;padding:3px 8px;" title="Auto-save with first line as title">
+              <span style="font-size: 0.75rem; font-weight: 500; user-select: none; white-space: nowrap;">Auto Title</span>
               <span class="switch">
                 <input type="checkbox" id="autoTitleToggle">
                 <span class="slider"></span>
               </span>
             </label>
-            <button id="newNoteBtn" class="btn btn-ghost">New</button>
             <button id="copyNoteBtn" class="btn btn-ghost">Copy</button>
             <button id="previewBtn" class="btn btn-ghost">Preview</button>
-            <button id="underlineBtn" class="btn btn-ghost" title="Underline selected text"><i data-lucide="underline"
-                size="14"></i></button>
+            <button id="undoBtn" class="btn btn-ghost fmt-btn" title="Undo (Ctrl+Z)"><i data-lucide="undo-2"
+                size="12"></i></button>
+            <button id="redoBtn" class="btn btn-ghost fmt-btn" title="Redo (Ctrl+Y)"><i data-lucide="redo-2"
+                size="12"></i></button>
+            <button id="underlineBtn"class="btn btn-ghost" title="Underline selected text"><i data-lucide="underline"
+                size="12"></i></button>
+            <select id="fontSizeSelect" class="btn btn-ghost" title="Font size of selected text"
+              style="padding:3px 4px;width:auto;">
+              <option value="">Size</option>
+              <option>10</option><option>12</option><option>14</option><option>16</option>
+              <option>18</option><option>20</option><option>24</option><option>28</option>
+              <option>32</option><option>40</option>
+            </select>
+            <button id="boldBtn"class="btn btn-ghost fmt-btn" title="Bold (Ctrl+B)"><i data-lucide="bold"
+                size="12"></i></button>
+            <button id="italicBtn" class="btn btn-ghost fmt-btn" title="Italic (Ctrl+I)"><i data-lucide="italic"
+                size="12"></i></button>
+            <label class="btn btn-ghost color-btn" title="Text color (select text first)"><span style="font-weight:700;">A</span>
+              <input type="color" id="textColorInput" value="#dc2626"></label>
             <button id="lineBtn" class="btn btn-ghost" title="Insert horizontal line"><i data-lucide="minus"
-                size="14"></i></button>
+                size="12"></i></button>
+            <button id="highlightBtn" class="btn btn-ghost fmt-btn" title="Highlight selected text (click again to remove)"><i data-lucide="highlighter"
+                size="12"></i></button>
+            <input type="color" id="highlightColorInput" value="#fff176"
+              style="position:fixed;opacity:0;width:1px;height:1px;border:0;padding:0;pointer-events:none;">
             <button id="formatJsonBtn" class="btn btn-ghost" title="Format as JSON">JSON</button>
+            <button id="newNoteBtn" class="btn btn-ghost">New</button>
             <button id="deleteNoteBtn" class="btn btn-ghost" style="color: var(--danger)">Delete</button>
-            <button id="saveNoteBtn" class="btn btn-primary"><i data-lucide="save" size="14"></i> Save</button>
+            <button id="saveNoteBtn" class="btn btn-primary"><i data-lucide="save" size="12"></i> Save</button><!-- label switches to "Update" when editing an existing note -->
           </div>
         </div>
 
@@ -1040,6 +1147,8 @@
             }
           });
         </script>
+
+        <button id="fabNewBtn" title="New note" onclick="document.getElementById('newNoteBtn').click()">+</button>
 
         <div class="status-bar">
           Last saved: <span id="lastSaved">—</span>
@@ -1148,6 +1257,43 @@
       const catMenu = document.getElementById('catMenu');
       const notesList = document.getElementById('notesList');
       const editor = document.getElementById('editor');
+
+      // Ctrl+Click (or Cmd+Click) a URL in the editor to open it in a new tab.
+      // Plain click still just places the cursor, so editing is unaffected.
+      function urlAtPoint(x, y) {
+        let node, offset;
+        if (document.caretPositionFromPoint) {
+          const p = document.caretPositionFromPoint(x, y);
+          if (!p) return null;
+          node = p.offsetNode; offset = p.offset;
+        } else if (document.caretRangeFromPoint) {
+          const r = document.caretRangeFromPoint(x, y);
+          if (!r) return null;
+          node = r.startContainer; offset = r.startOffset;
+        } else return null;
+        if (!node || node.nodeType !== 3) return null;
+        const re = /(https?:\/\/|www\.)[^\s<>"']+/gi;
+        let m;
+        while ((m = re.exec(node.textContent))) {
+          if (offset >= m.index && offset <= m.index + m[0].length) {
+            let url = m[0].replace(/[.,;:!?)\]]+$/, '');
+            return /^www\./i.test(url) ? 'https://' + url : url;
+          }
+        }
+        return null;
+      }
+      editor.addEventListener('click', e => {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        const url = urlAtPoint(e.clientX, e.clientY);
+        if (url) {
+          e.preventDefault();
+          window.open(url, '_blank', 'noopener');
+        }
+      });
+      const setLinkHint = e => editor.style.cursor = (e.ctrlKey || e.metaKey) ? 'pointer' : '';
+      window.addEventListener('keydown', setLinkHint);
+      window.addEventListener('keyup', setLinkHint);
+
       const saveNoteBtn = document.getElementById('saveNoteBtn');
       const newNoteBtn = document.getElementById('newNoteBtn');
       const deleteNoteBtn = document.getElementById('deleteNoteBtn');
@@ -1199,112 +1345,138 @@
         try { const db = await _openIDB(); return new Promise(r => { const tx = db.transaction(_IDB.store, 'readwrite'); tx.objectStore(_IDB.store).put(h, _IDB.key); tx.oncomplete = r; tx.onerror = r; }); } catch { }
       }
 
+      // filePerm: 'none' (no file picked) | 'granted' | 'prompt' (browser forgot permission after restart)
+      let filePerm = 'none';
+      let warnedNoPerm = false;
+
       function updateFileStatus() {
         if (!fileStatusEl) return;
-        if (fileHandle) { fileStatusEl.textContent = '📄 ' + fileHandle.name; fileStatusEl.style.color = 'var(--success)'; fileStatusEl.title = fileHandle.name; }
-        else { fileStatusEl.textContent = 'No file'; fileStatusEl.style.color = 'var(--text-muted)'; fileStatusEl.title = 'No file selected'; }
+        if (!fileHandle) {
+          fileStatusEl.textContent = 'No file'; fileStatusEl.style.color = 'var(--text-muted)';
+          fileStatusEl.title = 'Click the folder button to pick your sync folder';
+        } else if (filePerm === 'granted') {
+          fileStatusEl.textContent = '📄 ' + fileHandle.name; fileStatusEl.style.color = 'var(--success)';
+          fileStatusEl.title = fileHandle.name + ' (connected)';
+        } else {
+          fileStatusEl.textContent = '⚠ Click 🔄 to reconnect'; fileStatusEl.style.color = '#d97706';
+          fileStatusEl.title = 'Browser needs permission again to read/write ' + fileHandle.name;
+        }
+      }
+
+      async function ensurePermission(h, ask) {
+        try {
+          let p = await h.queryPermission({ mode: 'readwrite' });
+          if (p !== 'granted' && ask) p = await h.requestPermission({ mode: 'readwrite' });
+          return p === 'granted';
+        } catch (e) { return false; }
+      }
+
+      async function readFileData(h) {
+        const txt = await (await h.getFile()).text();
+        if (!txt || !txt.trim()) return null;
+        const p = JSON.parse(txt);
+        return (p && Array.isArray(p.categories) && p.notesData) ? p : null;
+      }
+
+      async function writeFileData(h) {
+        const w = await h.createWritable();
+        await w.write(JSON.stringify({ categories, notesData }, null, 2));
+        await w.close();
+      }
+
+      // Merge file + browser data so nothing is lost: union of categories and notes (matched by id),
+      // keeping the most recently updated copy of each note.
+      function mergeData(a, b) {
+        const cats = [];
+        const pushCat = c => { if (c && !cats.includes(c)) cats.push(c); };
+        (a.categories || []).forEach(pushCat); (b.categories || []).forEach(pushCat);
+        Object.keys(a.notesData || {}).forEach(pushCat); Object.keys(b.notesData || {}).forEach(pushCat);
+        const out = {};
+        cats.forEach(c => {
+          const list = []; const idx = new Map();
+          const add = n => {
+            if (!n) return;
+            const k = n.id ? 'id:' + n.id : 'c:' + (n.content || '');
+            if (!idx.has(k)) { idx.set(k, list.length); list.push(n); }
+            else if ((n.updatedAt || '') > (list[idx.get(k)].updatedAt || '')) list[idx.get(k)] = n;
+          };
+          ((a.notesData || {})[c] || []).forEach(add);
+          ((b.notesData || {})[c] || []).forEach(add);
+          out[c] = list;
+        });
+        return { categories: cats.length ? cats : ['General'], notesData: out };
+      }
+
+      async function loadAndMerge(h, quiet = false) {
+        const fileData = await readFileData(h);
+        if (!fileData) { await writeFileData(h); showToast('✓ ' + h.name + ' created'); return; }
+        const localJson = JSON.stringify({ categories, notesData });
+        const fileJson = JSON.stringify({ categories: fileData.categories, notesData: fileData.notesData });
+        const merged = mergeData(fileData, { categories, notesData });
+        const mergedJson = JSON.stringify(merged);
+        if (mergedJson !== localJson) {
+          categories = merged.categories; notesData = merged.notesData;
+          saveStorage(); updateCategoryDropdown();
+        }
+        if (mergedJson !== fileJson) await writeFileData(h);
+        if (!quiet || mergedJson !== localJson) showToast('✓ Synced with ' + h.name);
       }
 
       async function syncToFile() {
-        if (!fileHandle) return; // Silent return if no handle
+        if (!fileHandle) return;
+        if (!(await ensurePermission(fileHandle, true))) {
+          filePerm = 'prompt'; updateFileStatus();
+          if (!warnedNoPerm) { warnedNoPerm = true; showToast('⚠ Saved in browser only — click 🔄 to reconnect file'); }
+          return;
+        }
         try {
-          const w = await fileHandle.createWritable();
-          await w.write(JSON.stringify({ categories, notesData }, null, 2));
-          await w.close();
-          console.log('Auto-synced to file');
-        } catch (e) { console.warn('Auto-sync failed', e); }
+          await writeFileData(fileHandle);
+          filePerm = 'granted'; warnedNoPerm = false; updateFileStatus();
+        } catch (e) { console.warn('Auto-sync failed', e); showToast('⚠ File sync failed'); }
       }
 
       async function syncFromFile() {
         if (!fileHandle) { await openNotesFile(); return; }
-        try {
-          let p = await fileHandle.queryPermission({ mode: 'readwrite' });
-          if (p !== 'granted') p = await fileHandle.requestPermission({ mode: 'readwrite' });
-          if (p !== 'granted') { showToast('Permission denied'); return; }
-
-          const file = await fileHandle.getFile();
-          const txt = await file.text();
-          if (txt && txt.trim()) {
-            const pData = JSON.parse(txt);
-            if (pData.categories && pData.notesData) {
-              categories = pData.categories;
-              notesData = pData.notesData;
-              saveStorage();
-              updateCategoryDropdown();
-              showToast('✓ Updated from file');
-            }
-          } else {
-            showToast('File is empty');
-          }
-        } catch (e) {
-          if (e.name !== 'AbortError') {
-            console.error(e);
-            showToast('Sync failed');
-          }
+        if (!(await ensurePermission(fileHandle, true))) {
+          filePerm = 'prompt'; updateFileStatus(); showToast('Permission denied'); return;
         }
+        filePerm = 'granted'; warnedNoPerm = false; updateFileStatus();
+        try { await loadAndMerge(fileHandle); }
+        catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Sync failed — file is not valid JSON?'); } }
       }
 
       async function openNotesFile() {
-        if (!window.showDirectoryPicker) { alert('Directory Picker not supported.'); return; }
+        if (!window.showDirectoryPicker) { alert('Directory Picker not supported in this browser. Use Chrome or Edge.'); return; }
         try {
-          const dirHandle = await window.showDirectoryPicker();
+          const dirHandle = await window.showDirectoryPicker({ id: 'myNotesSync', mode: 'readwrite' });
           storage.setItem(NOTES_PREFIX + 'syncFolderName', dirHandle.name);
-
-          // Request permission
-          if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') {
-            showToast('Permission denied'); return;
-          }
-
-          // Try to get or create notes_data.json
+          if (await dirHandle.requestPermission({ mode: 'readwrite' }) !== 'granted') { showToast('Permission denied'); return; }
           const h = await dirHandle.getFileHandle('notes_data.json', { create: true });
-          fileHandle = h;
-
-          const file = await h.getFile();
-          const txt = await file.text();
-          if (txt && txt.trim()) {
-            try {
-              const p = JSON.parse(txt);
-              if (p.categories && p.notesData) {
-                const isLocalEmpty = categories.length <= 1 && Object.keys(notesData).every(k => !notesData[k] || notesData[k].length === 0);
-                if (isLocalEmpty || confirm(`Load notes from "${h.name}"?`)) {
-                  categories = p.categories; notesData = p.notesData;
-                  saveStorage(); updateCategoryDropdown();
-                  showToast('✓ Notes loaded');
-                }
-              }
-            } catch (e) { console.warn("Existing file was not valid JSON or empty."); }
-          } else {
-            // New or empty file, sync current local data to it
-            const w = await h.createWritable();
-            await w.write(JSON.stringify({ categories, notesData }, null, 2));
-            await w.close();
-            showToast('✓ notes_data.json created');
-          }
-
+          fileHandle = h; filePerm = 'granted'; warnedNoPerm = false;
           await _putHandle(h);
           updateFileStatus();
-        } catch (e) { if (e.name !== 'AbortError') showToast('Open failed'); }
+          await loadAndMerge(h);
+        } catch (e) { if (e.name !== 'AbortError') { console.error(e); showToast('Open failed'); } }
       }
 
       async function initFileHandle() {
         const h = await _getHandle();
-        if (h) {
-          fileHandle = h;
-          updateFileStatus();
-          // Attempt silent restore if permission is already granted and app is empty
-          try {
-            const isLocalEmpty = categories.length <= 1 && Object.keys(notesData).every(k => !notesData[k] || notesData[k].length === 0);
-            if (isLocalEmpty && (await h.queryPermission({ mode: 'readwrite' })) === 'granted') {
-              const txt = await (await h.getFile()).text();
-              const p = JSON.parse(txt);
-              if (p.categories && p.notesData) {
-                categories = p.categories; notesData = p.notesData;
-                saveStorage(); updateCategoryDropdown();
-                showToast('✓ Synced from file');
-              }
-            }
-          } catch (e) { }
-        } else { updateFileStatus(); }
+        if (!h) { updateFileStatus(); return; }
+        fileHandle = h;
+        if (await ensurePermission(h, false)) {
+          filePerm = 'granted'; updateFileStatus();
+          try { await loadAndMerge(h, true); } catch (e) { console.warn('Load from file failed', e); }
+        } else {
+          // Browser forgot permission (normal after restart). Permission can only be asked on a user click,
+          // so reconnect on the first click anywhere on the page.
+          filePerm = 'prompt'; updateFileStatus();
+          showToast('Click anywhere to load notes from ' + h.name);
+          const once = () => {
+            document.removeEventListener('pointerdown', once, true);
+            if (filePerm !== 'granted') syncFromFile();
+          };
+          document.addEventListener('pointerdown', once, true);
+        }
       }
       // ─────────────────────────────────────────────────────────────────
 
@@ -1340,6 +1512,20 @@
       }
 
       const _domParser = new DOMParser();
+      // Remove scripts / event handlers from stored note HTML before putting it in the editor
+      function sanitizeHtml(html) {
+        if (!html || !/[<&]/.test(html)) return html || '';
+        try {
+          const doc = _domParser.parseFromString('<body>' + html + '</body>', 'text/html');
+          doc.body.querySelectorAll('script,iframe,object,embed,link,meta,style,base,form').forEach(el => el.remove());
+          doc.body.querySelectorAll('*').forEach(el => {
+            [...el.attributes].forEach(a => {
+              if (/^on/i.test(a.name) || (/^(href|src|xlink:href|action|formaction)$/i.test(a.name) && /^\s*javascript:/i.test(a.value))) el.removeAttribute(a.name);
+            });
+          });
+          return doc.body.innerHTML;
+        } catch (e) { return escapeHtml(html); }
+      }
       function stripHtml(html) {
         if (!html) return '';
         try {
@@ -1466,7 +1652,7 @@
           if (c !== 'General' && !isCatBulkMode) {
             const editBtn = document.createElement('button');
             editBtn.title = 'Rename Category';
-            editBtn.innerHTML = '<i data-lucide="edit-2" size="14"></i>';
+            editBtn.innerHTML = '<i data-lucide="edit-2" size="12"></i>';
             editBtn.addEventListener('click', e => {
               e.stopPropagation();
               renameCategory(c, nameEl);
@@ -1475,7 +1661,7 @@
             const delBtn = document.createElement('button');
             delBtn.title = 'Delete Category';
             delBtn.className = 'danger-hover';
-            delBtn.innerHTML = '<i data-lucide="trash-2" size="14"></i>';
+            delBtn.innerHTML = '<i data-lucide="trash-2" size="12"></i>';
             delBtn.addEventListener('click', e => {
               e.stopPropagation();
               deleteCategory(c);
@@ -1636,6 +1822,8 @@
         });
 
         input.addEventListener('blur', finishRename);
+        ['click', 'mousedown', 'mouseup', 'dblclick', 'pointerdown'].forEach(t =>
+          input.addEventListener(t, ev => ev.stopPropagation()));
       }
 
       function deleteCategory(catName) {
@@ -1743,6 +1931,91 @@
       underlineBtn.addEventListener('click', (e) => {
         editor.focus();
         document.execCommand('underline', false, null);
+      });
+
+      // Keep the editor selection when clicking formatting buttons
+      document.querySelectorAll('.fmt-btn').forEach(b =>
+        b.addEventListener('mousedown', e => e.preventDefault()));
+      document.getElementById('undoBtn').addEventListener('click', () => {
+        editor.focus(); document.execCommand('undo', false, null);
+      });
+      document.getElementById('redoBtn').addEventListener('click', () => {
+        editor.focus(); document.execCommand('redo', false, null);
+      });
+      document.getElementById('boldBtn').addEventListener('click', () => {
+        editor.focus(); document.execCommand('bold', false, null);
+      });
+      document.getElementById('italicBtn').addEventListener('click', () => {
+        editor.focus(); document.execCommand('italic', false, null);
+      });
+
+      // Remember the last selection inside the editor (colour pickers steal focus)
+      let savedRange = null;
+      document.addEventListener('selectionchange', () => {
+        const s = window.getSelection();
+        if (s.rangeCount && editor.contains(s.anchorNode)) savedRange = s.getRangeAt(0).cloneRange();
+      });
+
+      // Font size of selected text (px)
+      document.getElementById('fontSizeSelect').addEventListener('change', e => {
+        const px = e.target.value;
+        e.target.value = '';
+        if (!px) return;
+        editor.focus();
+        if (savedRange) {
+          const s = window.getSelection();
+          s.removeAllRanges(); s.addRange(savedRange);
+        }
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) { showToast('Select some text first'); return; }
+        document.execCommand('styleWithCSS', false, false);
+        document.execCommand('fontSize', false, '7');
+        editor.querySelectorAll('font[size="7"]').forEach(f => {
+          const span = document.createElement('span');
+          span.style.fontSize = px + 'px';
+          while (f.firstChild) span.appendChild(f.firstChild);
+          f.replaceWith(span);
+        });
+      });
+
+      // Text colour
+      document.getElementById('textColorInput').addEventListener('input', e => {
+        editor.focus();
+        if (savedRange) {
+          const s = window.getSelection();
+          s.removeAllRanges(); s.addRange(savedRange);
+        }
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('foreColor', false, e.target.value);
+      });
+
+      // Highlighter / marker: select text, click once to mark, click again to unmark
+      // Click = choose a colour (picker opens at the button); Shift+click = remove highlight
+      document.getElementById('highlightBtn').addEventListener('click', (e) => {
+        editor.focus();
+        document.execCommand('styleWithCSS', false, true);
+        if (e.shiftKey) {
+          document.execCommand('hiliteColor', false, 'transparent');
+          return;
+        }
+        const sel = window.getSelection();
+        if (!sel.rangeCount || sel.isCollapsed) { showToast('Select some text first'); return; }
+        const inp = document.getElementById('highlightColorInput');
+        const r = e.currentTarget.getBoundingClientRect();
+        inp.style.left = r.left + 'px';
+        inp.style.top = (r.bottom + 4) + 'px';
+        try { inp.showPicker(); } catch { inp.click(); }
+      });
+
+      // Picking a highlight colour marks the selected text with it straight away
+      document.getElementById('highlightColorInput').addEventListener('input', e => {
+        editor.focus();
+        if (savedRange) {
+          const s = window.getSelection();
+          s.removeAllRanges(); s.addRange(savedRange);
+        }
+        document.execCommand('styleWithCSS', false, true);
+        document.execCommand('hiliteColor', false, e.target.value);
       });
 
       // Horizontal Line logic
@@ -1916,12 +2189,28 @@
 
 
       // --- Open note by index (unchanged except it now considers title field while preserving content) ---
+      // HTML of the open note as last loaded/saved, used to detect unsaved edits
+      let openedHtml = '';
+      function hasUnsavedChanges() {
+        if (selectedNoteIndex === null || !selectedCategory) return false;
+        const stored = ((notesData[selectedCategory] || [])[selectedNoteIndex] || {}).content;
+        return editor.innerHTML !== openedHtml && editor.innerHTML !== stored;
+      }
+      // Returns true if it's OK to leave the current note (saved, or nothing to save)
+      function confirmLeaveNote() {
+        if (!hasUnsavedChanges()) return true;
+        if (!confirm('You have unsaved changes. Do you want to update this note before leaving?\n\nOK = Save & continue\nCancel = Stay on this note')) return false;
+        return saveCurrentNote(false, true) !== false;
+      }
+
       function openNoteByIndex(index) {
         if (!selectedCategory) return;
         const arr = notesData[selectedCategory] || [];
         if (index < 0 || index >= arr.length) return;
+        if (index !== selectedNoteIndex && !confirmLeaveNote()) return;
         const note = arr[index];
-        editor.innerHTML = note.content || '';
+        editor.innerHTML = sanitizeHtml(note.content || '');
+        openedHtml = editor.innerHTML;
         selectedNoteIndex = index;
         lastSaved.textContent = note.updatedAt ? new Date(note.updatedAt).toLocaleString() : '—';
         renderNotesList();
@@ -1929,7 +2218,7 @@
       }
 
       // --- Save current note ---
-      function saveCurrentNote(isAutoSaveFromNew = false) {
+      function saveCurrentNote(isAutoSaveFromNew = false, skipConfirm = false) {
         const wasNewNote = (selectedNoteIndex === null);
 
         if (!selectedCategory) { if (!isAutoSaveFromNew) alert('Please select a category first.'); return false; }
@@ -1943,7 +2232,12 @@
 
         if (selectedNoteIndex !== null) {
           // --- EXISTING NOTE: update in place to maintain chronological order ---
-          if (!confirm('Do you want to update?')) return false;
+          // Nothing changed since last save: skip the prompt and the write
+          if (notesData[selectedCategory][selectedNoteIndex].content === content) {
+            showToast('No changes to save');
+            return false;
+          }
+          if (!skipConfirm && !confirm('Save changes to this note?')) return false;
           notesData[selectedCategory][selectedNoteIndex].content = content;
           notesData[selectedCategory][selectedNoteIndex].updatedAt = now;
           showToast('✓ Note updated');
@@ -1968,20 +2262,18 @@
         }
 
         saveStorage();
+        openedHtml = editor.innerHTML;
         lastSaved.textContent = new Date().toLocaleString();
         renderNotesList();
         // File sync (prompts for path on first save if none selected)
         syncToFile().catch(err => { if (err && err.name !== 'AbortError') console.error(err); });
 
         const originalText = saveNoteBtn.innerHTML;
-        saveNoteBtn.innerHTML = '<i data-lucide="check" size="14"></i> Saved';
+        saveNoteBtn.innerHTML = '<i data-lucide="check" size="12"></i> Saved';
         try { lucide.createIcons(); } catch { }
 
         // show saved feedback briefly, then clear editor ONLY if this was a NEW note and NOT an auto-save from New button
         setTimeout(() => {
-          saveNoteBtn.innerHTML = originalText;
-          try { lucide.createIcons(); } catch { }
-
           if (!isAutoSaveFromNew) {
             if (wasNewNote && !isAutoTitle) {
               editor.innerText = '';
@@ -1993,6 +2285,7 @@
               editor.focus();
             }
           }
+          syncSaveLabel();
         }, 400);
         
         return true;
@@ -2025,7 +2318,7 @@
         const titleEl = row.querySelector('.title');
         if (!titleEl) return;
 
-        const currentTitle = note.title || (note.content || '').split('\n')[0].trim() || 'Untitled Note';
+        const currentTitle = note.title || stripHtml((note.content || '').slice(0, 1000)).replace(/\r\n/g, '\n').split('\n')[0].trim() || 'Untitled Note';
 
         const input = document.createElement('input');
         input.type = 'text';
@@ -2074,6 +2367,15 @@
         });
 
         input.addEventListener('blur', finishRename);
+
+        // Clicks inside the input must not reach the row (which would re-render the list and close edit mode)
+        ['click', 'mousedown', 'mouseup', 'dblclick', 'pointerdown'].forEach(t =>
+          input.addEventListener(t, ev => ev.stopPropagation()));
+        const draggableRow = row.closest('[draggable="true"]') || (row.draggable ? row : null);
+        if (draggableRow) {
+          draggableRow.draggable = false;
+          input.addEventListener('blur', () => { draggableRow.draggable = true; });
+        }
       }
 
       function showNoteContextMenu(e, index) {
@@ -2088,7 +2390,7 @@
         menu.innerHTML = '';
         const edit = document.createElement('div');
         edit.className = 'ctx-item';
-        edit.innerHTML = '<i data-lucide="edit-2" size="14"></i> Rename';
+        edit.innerHTML = '<i data-lucide="edit-2" size="12"></i> Rename';
         edit.onclick = () => {
           renameNoteByIndex(index);
           menu.classList.remove('open');
@@ -2096,7 +2398,7 @@
 
         const selectMul = document.createElement('div');
         selectMul.className = 'ctx-item';
-        selectMul.innerHTML = '<i data-lucide="check-square" size="14"></i> Select Multiple';
+        selectMul.innerHTML = '<i data-lucide="check-square" size="12"></i> Select Multiple';
         selectMul.onclick = () => {
           isBulkMode = true;
           bulkActions.style.display = 'flex';
@@ -2109,7 +2411,7 @@
 
         const del = document.createElement('div');
         del.className = 'ctx-item danger';
-        del.innerHTML = '<i data-lucide="trash-2" size="14"></i> Delete';
+        del.innerHTML = '<i data-lucide="trash-2" size="12"></i> Delete';
         del.onclick = () => {
           if (confirm('Delete this note?')) {
             deleteNoteByIndex(index);
@@ -2135,7 +2437,17 @@
         try { lucide.createIcons(); } catch { }
       }
 
+      // Button reads "Update" when an existing note is open, "Save" for a new one
+      function syncSaveLabel() {
+        const label = selectedNoteIndex !== null ? 'Update' : 'Save';
+        saveNoteBtn.innerHTML = selectedNoteIndex !== null
+          ? label
+          : `<i data-lucide="save" size="12"></i> ${label}`;
+        try { lucide.createIcons(); } catch { }
+      }
+
       function updateBreadcrumb() {
+        syncSaveLabel();
         const catEl = document.getElementById('bcCategory');
         const noteEl = document.getElementById('bcNote');
         if (catEl) catEl.textContent = selectedCategory || '—';
@@ -2172,8 +2484,10 @@
         const isAutoTitle = document.getElementById('autoTitleToggle')?.checked;
         if (isAutoTitle) {
           saveCurrentNote(true);
+        } else if (!confirmLeaveNote()) {
+          return;
         }
-        clearEditor(); 
+        clearEditor();
         editor.focus(); 
       });
       deleteNoteBtn.addEventListener('click', () => { if (selectedNoteIndex === null) return; if (confirm('Delete currently open note?')) deleteNoteByIndex(selectedNoteIndex); });
@@ -2331,6 +2645,7 @@
       // File button handlers
       openFileBtn.addEventListener('click', () => openNotesFile());
       syncBtn.addEventListener('click', () => syncFromFile());
+      document.getElementById('calcBtn').addEventListener('click', (e) => { e.stopPropagation(); toggleCalculator(); });
 
       calcHandle.addEventListener('pointerdown', (e) => {
         isDragging = true;
@@ -2358,7 +2673,12 @@
           if (action === 'clear') calcDisplay.value = '';
           else if (action === 'back') calcDisplay.value = calcDisplay.value.slice(0, -1);
           else if (action === 'equals') {
-            try { calcDisplay.value = eval(calcDisplay.value) || ''; } catch { calcDisplay.value = 'Error'; }
+            const expr = calcDisplay.value;
+            if (!/^[0-9+\-*/. ]+$/.test(expr)) { calcDisplay.value = expr ? 'Error' : ''; return; }
+            try {
+              const r = Function('"use strict";return (' + expr + ')')();
+              calcDisplay.value = Number.isFinite(r) ? String(+r.toFixed(10)) : 'Error';
+            } catch { calcDisplay.value = 'Error'; }
           } else if (val) calcDisplay.value += val;
         });
       });

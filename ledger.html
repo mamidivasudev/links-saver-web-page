@@ -1,0 +1,1233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ledger — Loans &amp; Cards</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#12241f;
+    --paper:#eeece2;
+    --panel:#f7f5ec;
+    --navy:#16302b;
+    --navy-2:#1e3f38;
+    --emerald:#2f6f5e;
+    --emerald-light:#d7e6de;
+    --amber:#c98a2c;
+    --amber-light:#f3e3c6;
+    --rust:#a8452f;
+    --rust-light:#f1ddd6;
+    --line:#d8d4c4;
+    --shadow: 0 10px 30px rgba(18,36,31,.10);
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+    min-height:100vh;
+  }
+  .num{font-family:'Space Grotesk','Inter',sans-serif; font-variant-numeric: tabular-nums;}
+
+  /* ---------- Layout ---------- */
+  .app{ display:flex; min-height:100vh; }
+  .rail{
+    width:220px; flex-shrink:0; background:var(--navy); color:#e9ede9;
+    padding:28px 18px; display:flex; flex-direction:column; gap:6px;
+  }
+  .rail-brand{
+    font-family:'Space Grotesk',sans-serif; font-size:20px; font-weight:600;
+    letter-spacing:.02em; margin-bottom:6px; display:flex; align-items:center; gap:8px;
+  }
+  .rail-brand .dot{width:9px;height:9px;border-radius:50%;background:var(--amber);display:inline-block;}
+  .rail-sub{font-size:12px; color:#9db3ac; margin-bottom:28px;}
+  .rail-btn{
+    all:unset; cursor:pointer; padding:11px 14px; border-radius:10px; font-size:14px;
+    color:#cfe0d9; display:flex; align-items:center; gap:10px; transition:.15s;
+  }
+  .rail-btn:hover{background:rgba(255,255,255,.06);}
+  .rail-btn.active{background:var(--navy-2); color:#fff; font-weight:600;}
+  .rail-foot{margin-top:auto; font-size:11px; color:#7b9089; line-height:1.5;}
+
+  .main{flex:1; padding:36px 40px; max-width:1100px;}
+  @media (max-width:760px){
+    .app{flex-direction:column;}
+    .rail{width:100%; flex-direction:row; align-items:center; padding:14px 16px; gap:4px; overflow-x:auto;}
+    .rail-brand,.rail-sub,.rail-foot,.rail-sync{display:none;}
+    .rail-btn{white-space:nowrap;}
+    .main{padding:18px;}
+  }
+
+  h1{font-family:'Space Grotesk',sans-serif; font-size:26px; margin:0 0 4px;}
+  .page-sub{color:#5c6b64; font-size:14px; margin-bottom:24px;}
+  h2.section-title{font-family:'Space Grotesk',sans-serif; font-size:15px; margin:34px 0 12px;}
+
+  /* ---------- Stat strip ---------- */
+  .stats{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:30px;}
+  @media (max-width:640px){.stats{grid-template-columns:1fr;}}
+  .stat{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    padding:18px 20px; position:relative; overflow:hidden;
+  }
+  .stat::before{content:"";position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--accent,var(--emerald));}
+  .stat-label{font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:#77887f; margin-bottom:8px;}
+  .stat-val{font-family:'Space Grotesk',sans-serif; font-size:26px; font-weight:600;}
+
+  /* ---------- Sheet (grid table) ---------- */
+  .sheet-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:16px;
+    box-shadow:var(--shadow); overflow:hidden; margin-bottom:24px;
+  }
+  .sheet-head{
+    display:flex; align-items:center; justify-content:space-between; flex-wrap: wrap; gap: 10px;
+    padding:16px 20px; border-bottom:1px solid var(--line);
+  }
+  .sheet-head-actions { display: flex; gap: 8px; }
+  .sheet-head h2{font-family:'Space Grotesk',sans-serif; font-size:16px; margin:0;}
+  .add-btn{
+    all:unset; cursor:pointer; background:var(--navy); color:#fff; font-size:13px; font-weight:600;
+    padding:8px 15px; border-radius:9px; display:flex; align-items:center; gap:6px; transition:.15s;
+  }
+  .add-btn.secondary { background: var(--panel); color: var(--navy); border: 1px solid var(--line); }
+  .add-btn.secondary:hover { background: var(--line); }
+  .add-btn:hover:not(.secondary){background:var(--navy-2);}
+  .sheet-scroll{ overflow:auto; max-height:60vh; }
+  table.sheet{ border-collapse:collapse; width:100%; min-width:640px; font-size:13.5px; }
+  table.sheet th{
+    position:sticky; top:0; background:var(--navy); color:#dfe9e4;
+    font-family:'Space Grotesk',sans-serif; font-weight:600; font-size:11.5px;
+    text-transform:uppercase; letter-spacing:.04em; padding:11px 14px; text-align:right; white-space:nowrap; z-index:10;
+  }
+  table.sheet th:first-child{ text-align:left; position:sticky; left:0; z-index:12; }
+  table.sheet td{ padding:10px 14px; text-align:right; border-bottom:1px solid var(--line); white-space:nowrap; }
+  table.sheet td:first-child{
+    text-align:left; font-weight:600; font-family:'Space Grotesk',sans-serif; color:var(--navy-2);
+    position:sticky; left:0; background:var(--panel);
+  }
+  table.sheet tbody tr:hover td{ background:rgba(47,111,94,.05); }
+  table.sheet tbody tr:hover td:first-child{ background:#eef4f0; }
+  td.total-cell{ font-weight:700; color:var(--navy-2); background:var(--amber-light) !important; }
+  th.total-th{ background:var(--amber); color:#3a2a0d; }
+  .pill{font-size:10.5px; font-weight:700; padding:2px 7px; border-radius:20px; letter-spacing:.03em; display:inline-block; margin-left:6px;}
+  .pill.paid{background:var(--emerald-light); color:var(--emerald);}
+  .pill.pending{background:var(--amber-light); color:var(--amber);}
+  .pill.dash{background:#e5e2d6; color:#8a8776;}
+  .row-actions{ display:inline-flex; gap:4px; margin-left:8px; }
+  .icon-btn{
+    all:unset; cursor:pointer; width:24px; height:24px; border-radius:6px; display:inline-flex;
+    align-items:center; justify-content:center; color:#9aa79f; transition:.15s; font-size:13px; vertical-align:middle;
+  }
+  .icon-btn:hover{background:var(--line); color:var(--ink);}
+  .icon-btn.danger:hover{background:var(--rust-light); color:var(--rust);}
+  .empty{padding:30px 20px; text-align:center; color:#8a9089; font-size:14px;}
+
+  /* ---------- Detail / reference panels ---------- */
+  .panels{display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:16px;}
+  .panel{
+    background:var(--panel); border:1px solid var(--line); border-radius:14px; padding:18px 20px;
+  }
+  .panel h3{font-family:'Space Grotesk',sans-serif; font-size:14px; margin:0 0 12px; display:flex; align-items:center; gap:8px;}
+  .panel h3 .bank-tag{width:8px;height:8px;border-radius:2px; display:inline-block;}
+  .kv{display:flex; justify-content:space-between; align-items:center; padding:7px 0; border-bottom:1px dotted var(--line); font-size:13px;}
+  .kv:last-child{border-bottom:none;}
+  .kv .k{color:#5c6b64;}
+  .kv .v{font-family:'Space Grotesk',sans-serif; font-weight:600;}
+  .kv input{
+    width:100px; text-align:right; border:1px solid transparent; background:transparent; font-family:'Space Grotesk',sans-serif;
+    font-weight:600; font-size:13px; padding:3px 6px; border-radius:6px; color:var(--ink);
+  }
+  .kv input:hover{border-color:var(--line);}
+  .kv input:focus{outline:none; border-color:var(--emerald); background:#fff;}
+  .bank-row{display:grid; grid-template-columns:100px 1fr 1fr; gap:8px; align-items:center; padding:6px 0; font-size:13px;}
+  .bank-row .bname{font-weight:600; font-family:'Space Grotesk',sans-serif;}
+  .bank-row label{font-size:10.5px; color:#8a9089; display:block; margin-bottom:2px;}
+  .bank-row input{width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:7px; font-size:13px; font-family:'Space Grotesk',sans-serif; background:#fbfaf6;}
+
+  /* ---------- Modal ---------- */
+  .overlay{
+    position:fixed; inset:0; background:rgba(18,36,31,.45); display:none;
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .overlay.show{display:flex;}
+  .modal{
+    background:#fff; border-radius:16px; width:100%; max-width:420px; padding:26px;
+    box-shadow:0 20px 60px rgba(0,0,0,.25); max-height:88vh; overflow-y:auto;
+  }
+  .modal h3{font-family:'Space Grotesk',sans-serif; margin:0 0 18px; font-size:18px;}
+  .form-row{margin-bottom:14px;}
+  .form-row label{display:block; font-size:12px; color:#5c6b64; margin-bottom:5px; font-weight:600;}
+  .form-row input, .form-row select{
+    width:100%; padding:10px 12px; border-radius:9px; border:1px solid var(--line);
+    font-size:14px; font-family:inherit; background:#fbfaf6;
+  }
+  .form-row input:focus, .form-row select:focus{outline:2px solid var(--emerald); outline-offset:1px;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .modal-actions{display:flex; justify-content:flex-end; gap:10px; margin-top:20px;}
+  .btn-ghost{all:unset; cursor:pointer; padding:9px 16px; font-size:13px; color:#5c6b64; border-radius:9px;}
+  .btn-ghost:hover{background:#f0efe6;}
+  .btn-solid{all:unset; cursor:pointer; padding:9px 18px; font-size:13px; font-weight:700; background:var(--emerald); color:#fff; border-radius:9px;}
+  .btn-solid:hover{background:#265c4d;}
+
+  .toast{
+    position:fixed; bottom:24px; left:50%; transform:translateX(-50%) translateY(20px);
+    background:var(--navy); color:#fff; padding:11px 20px; border-radius:10px; font-size:13px;
+    opacity:0; pointer-events:none; transition:.25s; z-index:80;
+  }
+  .toast.show{opacity:1; transform:translateX(-50%) translateY(0);}
+  .due-date{font-size:11px; font-weight:normal; opacity:.65; cursor:pointer; display:inline-block; margin-top:4px; border-bottom:1px dashed rgba(255,255,255,0.3);}
+  .due-date:hover{opacity:1;}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="rail">
+    <div class="rail-brand"><span class="dot"></span>Ledger</div>
+    <div class="rail-sub">Loans &amp; card tracker</div>
+    <button class="rail-btn active" data-view="loans" onclick="switchView('loans')">💳 Loans</button>
+    <button class="rail-btn" data-view="cards" onclick="switchView('cards')">🏦 Credit Cards</button>
+    <button class="rail-btn" data-view="trade" onclick="switchView('trade')">📉 Trade Loss</button>
+    <button class="rail-btn" data-view="summary" onclick="switchView('summary')">📊 Summary</button>
+    <div class="rail-sync" style="margin-top:20px; padding-top:20px; border-top:1px solid rgba(255,255,255,0.1); display:flex; flex-direction:column; gap:12px; align-items:center;">
+      <div style="display:flex;gap:8px;justify-content:center;width:100%;">
+        <button class="add-btn secondary" style="padding:6px 10px;font-size:11px;flex:1;justify-content:center;" onclick="exportData()">Export</button>
+        <label class="add-btn secondary" style="padding:6px 10px;font-size:11px;cursor:pointer;margin:0;flex:1;display:flex;justify-content:center;align-items:center;">
+          Import
+          <input type="file" style="display:none" accept=".json" onchange="importData(event)">
+        </label>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:6px;width:100%;">
+        <button class="add-btn secondary" style="padding:6px 10px;font-size:11px;width:100%;justify-content:center;" onclick="pickSyncFolder()">Pick Sync Folder</button>
+        <div id="syncStatus" style="font-size:10px;color:#9db3ac;text-align:center;line-height:1.4;">No sync folder connected</div>
+      </div>
+    </div>
+    <div class="rail-foot">
+      Saved automatically to your device.
+    </div>
+  </div>
+
+  <div class="main">
+
+    <!-- LOANS VIEW -->
+    <div id="view-loans">
+      <h1>Loan ledger</h1>
+
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2>Monthly EMIs</h2>
+            <div id="loans-head-summary" style="font-size:13px;color:#5c6b64;display:flex;gap:12px;align-items:center;"></div>
+          </div>
+          <div class="sheet-head-actions">
+            <button class="add-btn secondary" onclick="openAddBankForm('loan')">+ Add Loan</button>
+            <button class="add-btn" onclick="openLoanForm()">+ Add month</button>
+          </div>
+        </div>
+        <div class="sheet-scroll">
+          <table class="sheet">
+            <thead id="loans-head"></thead>
+            <tbody id="loans-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 class="section-title">Loan details</h2>
+      <div class="panels" id="loans-panels"></div>
+    </div>
+
+    <!-- CARDS VIEW -->
+    <div id="view-cards" style="display:none;">
+      <h1>Credit card ledger</h1>
+
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h2>Monthly balances</h2>
+            <div id="cards-head-summary" style="font-size:13px;color:#5c6b64;display:flex;gap:12px;align-items:center;"></div>
+          </div>
+          <div class="sheet-head-actions">
+            <button class="add-btn secondary" onclick="openAddBankForm('card')">+ Add Card</button>
+            <button class="add-btn" onclick="openCardForm()">+ Add month</button>
+          </div>
+        </div>
+        <div class="sheet-scroll">
+          <table class="sheet">
+            <thead id="cards-head"></thead>
+            <tbody id="cards-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <h2 class="section-title">Card limits (reference)</h2>
+      <div class="panel">
+        <div class="bank-row" style="font-size:11px;color:#8a9089;padding-top:0;">
+          <div>Bank</div><div>Limit</div><div>Limit left</div>
+        </div>
+        <div id="limits-body"></div>
+      </div>
+    </div>
+
+    <!-- TRADE LOSS VIEW -->
+    <div id="view-trade" style="display:none;">
+      <h1>Trading loss</h1>
+      <div class="page-sub">Log losses by account, plus what carried over from last year.</div>
+
+      <div class="sheet-card">
+        <div class="sheet-head">
+          <h2>Trade loss</h2>
+          <button class="add-btn" onclick="addTradeEntry()">+ Add entry</button>
+        </div>
+        <div class="sheet-scroll">
+          <table class="sheet">
+            <thead><tr><th style="text-align:left;">Account</th><th>Amount</th><th></th></tr></thead>
+            <tbody id="trade-body"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel" style="max-width: 400px;">
+        <div class="kv"><span class="k">Previous trade loss</span><input type="text" inputmode="numeric" id="tl-previous" oninput="formatInputComma(this); saveTradeLoss()"></div>
+        <div class="kv"><span class="k">This year trade loss</span><span class="v num" id="tl-thisyear" style="color:var(--rust);">₹0</span></div>
+        <div class="kv"><span class="k">Total trade loss</span><span class="v num" id="tl-total" style="color:var(--rust); font-size:16px;">₹0</span></div>
+      </div>
+    </div>
+
+    <!-- SUMMARY VIEW -->
+    <div id="view-summary" style="display:none;">
+      <h1>Summary</h1>
+      <div class="page-sub">Your latest balances at a glance.</div>
+      <div class="stats">
+        <div class="stat" style="--accent:var(--emerald)">
+          <div class="stat-label">Credit cards</div>
+          <div class="stat-val num" id="sum-cards">₹0</div>
+        </div>
+        <div class="stat" style="--accent:var(--amber)">
+          <div class="stat-label">Loans</div>
+          <div class="stat-val num" id="sum-loans">₹0</div>
+        </div>
+        <div class="stat" style="--accent:var(--rust)">
+          <div class="stat-label">Total debt</div>
+          <div class="stat-val num" id="sum-total">₹0</div>
+        </div>
+      </div>
+      <div class="stats">
+        <div class="stat" style="--accent:#7a2f2f">
+          <div class="stat-label">Total trade loss</div>
+          <div class="stat-val num" id="sum-trade">₹0</div>
+        </div>
+        <div class="stat" style="--accent:var(--navy)">
+          <div class="stat-label">Debt + trade loss</div>
+          <div class="stat-val num" id="sum-grand">₹0</div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Bank/Loan Modal -->
+<div class="overlay" id="add-bank-overlay">
+  <div class="modal">
+    <h3 id="add-bank-title">Add Config</h3>
+    <input type="hidden" id="add-bank-type">
+    <div class="form-row">
+      <label>Name</label>
+      <input type="text" id="add-bank-name" placeholder="e.g. ICICI Bank" oninput="document.getElementById('add-bank-key').value = this.value.trim().replace(/\s+/g, '').toLowerCase()">
+    </div>
+    <div class="form-row" style="display:none;">
+      <label>Key</label>
+      <input type="text" id="add-bank-key">
+    </div>
+    <div id="add-loan-fields" style="display:none; margin-top: 10px; border-top: 1px solid var(--line); padding-top: 14px;">
+      <h4 style="margin: 0 0 10px; font-size: 13px; font-family: 'Space Grotesk', sans-serif;">Loan Details</h4>
+      <div class="form-row"><label>Total Amount (₹)</label><input type="text" inputmode="numeric" id="add-loan-sanctioned" value="" placeholder="0" oninput="formatInputComma(this)"></div>
+      <div class="form-row"><label>ROI (%)</label><input type="text" inputmode="numeric" id="add-loan-roi" value="" placeholder="0" oninput="formatInputComma(this)"></div>
+      <div class="form-row"><label>EMI (₹)</label><input type="text" inputmode="numeric" id="add-loan-emi" value="" placeholder="0" oninput="formatInputComma(this)"></div>
+      <div class="form-row"><label>No. of Months</label><input type="text" inputmode="numeric" id="add-loan-emisleft" value="" placeholder="0" oninput="formatInputComma(this)"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('add-bank-overlay')">Cancel</button>
+      <button class="btn-solid" onclick="saveNewBank()">Add</button>
+    </div>
+  </div>
+</div>
+
+<!-- Loan modal -->
+<div class="overlay" id="loan-overlay">
+  <div class="modal">
+    <h3 id="loan-modal-title">Add month</h3>
+    <input type="hidden" id="loan-id">
+    <div class="form-row">
+      <label>Month</label>
+      <select id="loan-month"></select>
+    </div>
+    <div class="form-grid" id="loan-modal-grid">
+      <!-- Generated dynamically -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('loan-overlay')">Cancel</button>
+      <button class="btn-solid" onclick="saveLoan()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Card modal -->
+<div class="overlay" id="card-overlay">
+  <div class="modal">
+    <h3 id="card-modal-title">Add month</h3>
+    <input type="hidden" id="card-id">
+    <div class="form-row">
+      <label>Month</label>
+      <select id="card-month"></select>
+    </div>
+    <div class="form-grid" id="card-modal-grid">
+      <!-- Generated dynamically -->
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" onclick="closeModal('card-overlay')">Cancel</button>
+      <button class="btn-solid" onclick="saveCard()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let loans = [];
+let cards = [];
+let loanDetails = {};
+let cardLimits = {};
+let tradeLoss = {};
+
+let loanConfig = [];
+let cardConfig = [];
+const colorPalette = ['var(--emerald)', 'var(--amber)', 'var(--rust)', '#6b6f47', '#3b5c8f', '#8e528b', '#486e9e', '#9b6c41'];
+
+// ---------- Formatting & Parsing ----------
+const fmt = n => '₹' + Number(n||0).toLocaleString('en-IN');
+
+function parseAmt(val) {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  return Number(val.toString().replace(/,/g, '')) || 0;
+}
+
+function formatWithComma(val) {
+  let v = val.toString().replace(/,/g, '').replace(/[^\d.-]/g, '');
+  if(!v) return '';
+  let parts = v.split('.');
+  let numStr = parts[0];
+  let res = '';
+  if (numStr.length > 3) {
+    let last3 = numStr.substring(numStr.length - 3);
+    let other = numStr.substring(0, numStr.length - 3);
+    other = other.replace(/\\B(?=(\\d{2})+(?!\\d))/g, ",");
+    res = other + ',' + last3;
+  } else {
+    res = numStr;
+  }
+  if (parts.length > 1) { res += '.' + parts[1]; }
+  if (v.startsWith('-') && !res.startsWith('-')) res = '-' + res;
+  return res;
+}
+
+function formatInputComma(el) {
+  let start = el.selectionStart;
+  let oldLen = el.value.length;
+  el.value = formatWithComma(el.value);
+  let newLen = el.value.length;
+  el.setSelectionRange(start + (newLen - oldLen), start + (newLen - oldLen));
+}
+
+// Generate upcoming months
+function getUpcomingMonths(count = 24) {
+  const mNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  const now = new Date();
+  let cm = now.getMonth();
+  let cy = now.getFullYear();
+  let result = [];
+  for (let i = 0; i < count; i++) {
+    let m = cm + i;
+    let y = cy + Math.floor(m / 12);
+    m = m % 12;
+    result.push(mNames[m] + '-' + String(y).slice(-2));
+  }
+  return result;
+}
+
+// ---------- Storage ----------
+async function getKey(key, fallback){
+  try{
+    const r = localStorage.getItem(key);
+    if (!r || r === 'null' || r === 'undefined') return fallback;
+    return JSON.parse(r);
+  }catch(e){ return fallback; }
+}
+
+async function setKey(key, value){
+  try{
+    localStorage.setItem(key, JSON.stringify(value));
+  }catch(e){ showToast('Could not save — try again'); }
+  
+  clearTimeout(window.syncTimer);
+  window.syncTimer = setTimeout(syncDataToFile, 1500);
+}
+
+async function loadData(){
+  loanConfig = await getKey('loanConfig', [
+    {key:'idfc', label:'IDFC', color:'var(--emerald)'},
+    {key:'hdfc', label:'HDFC', color:'var(--amber)'}
+  ]);
+  cardConfig = await getKey('cardConfig', [
+    {key:'hdfc', label:'HDFC', color:'var(--emerald)'},
+    {key:'idfc', label:'IDFC', color:'var(--amber)'},
+    {key:'sbi', label:'SBI', color:'var(--rust)'},
+    {key:'equitas', label:'Equitas', color:'#6b6f47'},
+    {key:'yesBank', label:'Yes Bank', color:'#3b5c8f'}
+  ]);
+
+  loans = await getKey('loans', null);
+  cards = await getKey('cards', null);
+  loanDetails = await getKey('loanDetails', null);
+  cardLimits = await getKey('cardLimits', null);
+  tradeLoss = await getKey('tradeLoss', null);
+
+  if(loans === null){
+    loans = [
+      {id:1, month:'Jan-26', idfcAmount:305161, idfcStatus:'PAID', hdfcAmount:0, hdfcStatus:'-'},
+      {id:2, month:'Feb-26', idfcAmount:297437, idfcStatus:'PAID', hdfcAmount:0, hdfcStatus:'-'},
+      {id:3, month:'Mar-26', idfcAmount:296126, idfcStatus:'PAID', hdfcAmount:0, hdfcStatus:'PAID'},
+      {id:4, month:'Apr-26', idfcAmount:294815, idfcStatus:'PAID', hdfcAmount:0, hdfcStatus:'PAID'},
+      {id:5, month:'May-26', idfcAmount:293504, idfcStatus:'PAID', hdfcAmount:89364, hdfcStatus:'PAID'},
+      {id:6, month:'Jun-26', idfcAmount:290090, idfcStatus:'PAID', hdfcAmount:85712, hdfcStatus:'PAID'},
+      {id:7, month:'Jul-26', idfcAmount:287444, idfcStatus:'PAID', hdfcAmount:82005, hdfcStatus:'PAID'},
+    ];
+    await setKey('loans', loans);
+  }
+  if(cards === null){
+    cards = [
+      {id:1, month:'Jan-26', hdfc:0, idfc:0, sbi:0, equitas:0, yesBank:0},
+      {id:2, month:'Feb-26', hdfc:0, idfc:0, sbi:0, equitas:0, yesBank:0},
+      {id:3, month:'Mar-26', hdfc:0, idfc:0, sbi:0, equitas:0, yesBank:0},
+      {id:4, month:'Apr-26', hdfc:0, idfc:0, sbi:0, equitas:0, yesBank:0},
+      {id:5, month:'May-26', hdfc:114000, idfc:0, sbi:60000, equitas:0, yesBank:0},
+      {id:6, month:'Jun-26', hdfc:109000, idfc:66950, sbi:60000, equitas:0, yesBank:0},
+      {id:7, month:'Jul-26', hdfc:99039, idfc:65000, sbi:60000, equitas:25000, yesBank:0},
+    ];
+    await setKey('cards', cards);
+  }
+  if(loanDetails === null){
+    loanDetails = {
+      idfc:{sanctioned:312885, emi:25441, totalpaid:54404, extrapaid:28963, emispaid:7, emisleft:53},
+      hdfc:{sanctioned:100000, emi:17995, totalpaid:24960, extrapaid:6965, emispaid:5, emisleft:19},
+    };
+    await setKey('loanDetails', loanDetails);
+  }
+  if(cardLimits === null){
+    cardLimits = { hdfc:117000, idfc:69000, sbi:63000, equitas:0, yesBank:59000 };
+    await setKey('cardLimits', cardLimits);
+  }
+  if(tradeLoss === null){
+    tradeLoss = {
+      previous: 300000,
+      entries: [
+        {id:1, label:'Fake day trader Telugu', amount:30139},
+        {id:2, label:'Nigama Trader', amount:52000},
+        {id:3, label:'Sunny - angel', amount:31000},
+        {id:4, label:'Sunny - upstox', amount:22000},
+        {id:5, label:'Bujji Angel Account', amount:31000},
+      ],
+    };
+    await setKey('tradeLoss', tradeLoss);
+  }
+}
+
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 1800);
+}
+
+// ---------- Rendering ----------
+function pill(status){
+  const s = (status||'-').toUpperCase();
+  const cls = s === 'PAID' ? 'paid' : (s === 'PENDING' ? 'pending' : 'dash');
+  return `<span class="pill ${cls}">${s}</span>`;
+}
+
+function formatOrdinal(text) {
+  if(!text) return '+ Add date';
+  return text.replace(/(\d+)(st|nd|rd|th)/i, '$1<sup style="text-transform:lowercase; font-size:9px;">$2</sup>');
+}
+
+function renderLoans(){
+  // Table headers
+  const head = document.getElementById('loans-head');
+  let ths = `<tr><th>Month</th>`;
+  loanConfig.forEach(b => {
+    ths += `<th>${b.label}<br><span class="due-date" style="text-transform:none;" onclick="setDueDate('loan', '${b.key}')">${formatOrdinal(b.dueDate)}</span></th>`;
+  });
+  ths += `<th></th></tr>`;
+  head.innerHTML = ths;
+
+  const body = document.getElementById('loans-body');
+  if(!loans.length){
+    body.innerHTML = `<tr><td colspan="${loanConfig.length + 2}" class="empty">No months logged yet. Tap "Add month" to start.</td></tr>`;
+  }else{
+    body.innerHTML = loans.map(r => {
+      let tds = `<td>${r.month}</td>`;
+      loanConfig.forEach(b => {
+        let amt = r[b.key + 'Amount'] || 0;
+        let st = r[b.key + 'Status'] || '-';
+        tds += `<td class="num">${fmt(amt)}<div style="margin-top:4px;">${pill(st)}</div></td>`;
+      });
+      tds += `<td>
+        <span class="row-actions">
+          <button class="icon-btn" title="Edit" onclick="openLoanForm(${r.id})">✎</button>
+          <button class="icon-btn danger" title="Delete" onclick="deleteLoan(${r.id})">🗑</button>
+        </span>
+      </td>`;
+      return `<tr>${tds}</tr>`;
+    }).join('');
+  }
+
+  // Loan details panels
+  const panelsContainer = document.getElementById('loans-panels');
+  const lastLoan = loans[loans.length-1] || {};
+  panelsContainer.innerHTML = loanConfig.map(b => {
+    const ld = loanDetails[b.key] || {sanctioned:0, emi:0, totalpaid:0, extrapaid:0, emispaid:0, emisleft:0};
+    const leftAmt = lastLoan[b.key + 'Amount'] || 0;
+    return `
+      <div class="panel">
+        <h3><span class="bank-tag" style="background:${b.color}"></span>${b.label}</h3>
+        <div class="kv"><span class="k">Total sanctioned</span><input type="text" inputmode="numeric" id="ld-${b.key}-sanctioned" value="${formatWithComma(ld.sanctioned)}" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">ROI (%)</span><input type="text" inputmode="numeric" id="ld-${b.key}-roi" value="${formatWithComma(ld.roi || 0)}" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">This EMI</span><input type="text" inputmode="numeric" id="ld-${b.key}-emi" value="${formatWithComma(ld.emi)}" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">Total paid</span><input type="text" inputmode="numeric" id="ld-${b.key}-totalpaid" value="${formatWithComma(ld.totalpaid)}" class="no-clear" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">Extra paid</span><input type="text" inputmode="numeric" id="ld-${b.key}-extrapaid" value="${formatWithComma(ld.extrapaid)}" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">EMIs paid</span><input type="text" inputmode="numeric" id="ld-${b.key}-emispaid" value="${formatWithComma(ld.emispaid)}" class="no-clear" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">EMIs left</span><input type="text" inputmode="numeric" id="ld-${b.key}-emisleft" value="${formatWithComma(ld.emisleft)}" class="no-clear" oninput="formatInputComma(this); saveLoanDetails()"></div>
+        <div class="kv"><span class="k">Loan left</span><span class="v num">₹${formatWithComma(leftAmt)}</span></div>
+      </div>
+    `;
+  }).join('');
+
+  let loansSummaryHtml = '';
+  let totalLoansHead = 0;
+  if(lastLoan) {
+    loanConfig.forEach(b => {
+      let amt = lastLoan[b.key + 'Amount'] || 0;
+      loansSummaryHtml += `<span><strong>${b.label}:</strong> ${fmt(amt)}</span>`;
+      totalLoansHead += amt;
+    });
+    loansSummaryHtml += `<span style="color:var(--navy-2);font-weight:600;">Total: ${fmt(totalLoansHead)}</span>`;
+  }
+  const summaryEl = document.getElementById('loans-head-summary');
+  if(summaryEl) summaryEl.innerHTML = loansSummaryHtml;
+  attachClearButtons();
+}
+
+function cardTotal(r){
+  return cardConfig.reduce((sum, b) => sum + (r[b.key] || 0), 0);
+}
+
+function renderCards(){
+  const head = document.getElementById('cards-head');
+  let ths = `<tr><th>Month</th>`;
+  cardConfig.forEach(b => { 
+    ths += `<th>${b.label}<br><span class="due-date" style="text-transform:none;" onclick="setDueDate('card', '${b.key}')">${formatOrdinal(b.dueDate)}</span></th>`; 
+  });
+  ths += `<th class="total-th">Total</th><th></th></tr>`;
+  head.innerHTML = ths;
+
+  const body = document.getElementById('cards-body');
+  if(!cards.length){
+    body.innerHTML = `<tr><td colspan="${cardConfig.length + 3}" class="empty">No months logged yet. Tap "Add month" to start.</td></tr>`;
+  }else{
+    body.innerHTML = cards.map(r => {
+      let tds = `<td>${r.month}</td>`;
+      cardConfig.forEach(b => {
+        let amt = r[b.key] || 0;
+        let st = r[b.key + 'Status'] || '-';
+        tds += `<td class="num">${fmt(amt)}<div style="margin-top:4px;">${pill(st)}</div></td>`;
+      });
+      tds += `<td class="num total-cell">${fmt(cardTotal(r))}</td>
+      <td>
+        <span class="row-actions">
+          <button class="icon-btn" title="Edit" onclick="openCardForm(${r.id})">✎</button>
+          <button class="icon-btn danger" title="Delete" onclick="deleteCard(${r.id})">🗑</button>
+        </span>
+      </td>`;
+      return `<tr>${tds}</tr>`;
+    }).join('');
+  }
+
+  // Card limits panel
+  const last = cards[cards.length-1] || {};
+  document.getElementById('limits-body').innerHTML = cardConfig.map(b => {
+    const limit = cardLimits[b.key] || 0;
+    const used = last[b.key] || 0;
+    const left = limit - used;
+    return `
+      <div class="bank-row">
+        <div class="bname"><span class="bank-tag" style="background:${b.color};display:inline-block;width:7px;height:7px;border-radius:2px;margin-right:6px;"></span>${b.label}</div>
+        <div><label>Limit</label><input type="text" inputmode="numeric" value="${formatWithComma(limit)}" oninput="formatInputComma(this); updateLimit('${b.key}', this.value)"></div>
+        <div><label>Limit left</label><input type="text" value="${formatWithComma(left)}" disabled style="opacity:.65;"></div>
+      </div>
+    `;
+  }).join('');
+
+  let cardsSummaryHtml = '';
+  if(last) {
+    cardsSummaryHtml = `<span style="color:var(--navy-2);font-weight:600;">Total Cards Amount: ${fmt(cardTotal(last))}</span>`;
+  }
+  const cardsSummaryEl = document.getElementById('cards-head-summary');
+  if(cardsSummaryEl) cardsSummaryEl.innerHTML = cardsSummaryHtml;
+  attachClearButtons();
+}
+
+function renderSummary(){
+  const lastLoan = loans[loans.length-1] || {};
+  const lastCard = cards[cards.length-1] || {};
+  const cardsTotal = cardTotal(lastCard);
+  const loansTotal = loanConfig.reduce((sum, b) => sum + (lastLoan[b.key + 'Amount'] || 0), 0);
+  const debtTotal = cardsTotal + loansTotal;
+  const tradeTotal = (tradeLoss.previous||0) + tradeThisYear();
+  document.getElementById('sum-cards').textContent = fmt(cardsTotal);
+  document.getElementById('sum-loans').textContent = fmt(loansTotal);
+  document.getElementById('sum-total').textContent = fmt(debtTotal);
+  document.getElementById('sum-trade').textContent = fmt(tradeTotal);
+  document.getElementById('sum-grand').textContent = fmt(debtTotal + tradeTotal);
+}
+
+function attachClearButtons() {
+  document.querySelectorAll('input[type="text"]').forEach(inp => {
+    if (inp.hasAttribute('disabled') || inp.readOnly) return;
+    if (inp.parentElement.classList.contains('clear-wrap')) return;
+    if (inp.id === 'add-bank-key' || inp.type === 'hidden') return; 
+    if (inp.classList.contains('no-clear')) return; 
+    
+    const wrap = document.createElement('div');
+    wrap.className = 'clear-wrap';
+    wrap.style.position = 'relative';
+    
+    if(inp.parentElement.classList.contains('kv')) {
+      wrap.style.width = '100px';
+      inp.style.width = '100%';
+    } else if (inp.style.width && inp.style.width !== '100%') {
+      wrap.style.width = inp.style.width;
+      inp.style.width = '100%';
+    } else {
+      wrap.style.width = '100%';
+    }
+    
+    inp.parentNode.insertBefore(wrap, inp);
+    wrap.appendChild(inp);
+    
+    const cross = document.createElement('span');
+    cross.innerHTML = '×';
+    cross.style.cssText = 'position:absolute; right:8px; top:50%; transform:translateY(-50%); cursor:pointer; font-size:18px; color:#a0aba5; line-height:1; z-index:10; font-family:sans-serif;';
+    cross.onmousedown = (e) => { 
+      e.preventDefault(); 
+      inp.value = ''; 
+      inp.dispatchEvent(new Event('input')); 
+      inp.focus(); 
+    };
+    wrap.appendChild(cross);
+    
+    inp.style.paddingRight = '24px';
+  });
+}
+
+function tradeThisYear(){ return (tradeLoss.entries||[]).reduce((s,e)=>s+(Number(e.amount)||0),0); }
+
+function renderTrade(){
+  const body = document.getElementById('trade-body');
+  body.innerHTML = (tradeLoss.entries||[]).map(e => `
+    <tr>
+      <td style="text-align:left;"><input type="text" value="${e.label}" oninput="updateTradeEntry(${e.id}, 'label', this.value)" style="width:100%;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-family:inherit;"></td>
+      <td class="num"><input type="text" inputmode="numeric" value="${formatWithComma(e.amount)}" oninput="formatInputComma(this); updateTradeEntry(${e.id}, 'amount', this.value)" style="width:110px;text-align:right;border:1px solid var(--line);border-radius:7px;padding:6px 8px;font-family:'Space Grotesk',sans-serif;"></td>
+      <td><button class="icon-btn danger" title="Delete" onclick="deleteTradeEntry(${e.id})">🗑</button></td>
+    </tr>
+  `).join('');
+
+  const thisYear = tradeThisYear();
+  document.getElementById('tl-previous').value = formatWithComma(tradeLoss.previous||0);
+  document.getElementById('tl-thisyear').textContent = fmt(thisYear);
+  document.getElementById('tl-total').textContent = fmt((tradeLoss.previous||0) + thisYear);
+  attachClearButtons();
+}
+
+let tlTimer;
+function persistTradeLoss(){
+  clearTimeout(tlTimer);
+  tlTimer = setTimeout(()=> setKey('tradeLoss', tradeLoss), 500);
+}
+function saveTradeLoss(){
+  tradeLoss.previous = parseAmt(document.getElementById('tl-previous').value);
+  renderTrade();
+  persistTradeLoss();
+}
+function updateTradeEntry(id, field, val){
+  const e = tradeLoss.entries.find(x=>x.id===id);
+  if(!e) return;
+  e[field] = field==='amount' ? parseAmt(val) : val;
+  // Re-rendering on every keystroke in a table cell causes loss of focus.
+  // We only update the totals visually instead.
+  const thisYear = tradeThisYear();
+  document.getElementById('tl-thisyear').textContent = fmt(thisYear);
+  document.getElementById('tl-total').textContent = fmt((tradeLoss.previous||0) + thisYear);
+  persistTradeLoss();
+}
+function addTradeEntry(){
+  const id = Date.now();
+  tradeLoss.entries.push({id, label:'New account', amount:0});
+  renderTrade();
+  persistTradeLoss();
+}
+function deleteTradeEntry(id){
+  tradeLoss.entries = tradeLoss.entries.filter(x=>x.id!==id);
+  renderTrade();
+  persistTradeLoss();
+}
+
+async function setDueDate(type, key) {
+  const config = type === 'loan' ? loanConfig : cardConfig;
+  const bank = config.find(b => b.key === key);
+  const newDate = prompt(`Enter payment date for ${bank.label} (e.g. 5th):`, bank.dueDate || '');
+  if (newDate !== null) {
+    bank.dueDate = newDate;
+    await setKey(type === 'loan' ? 'loanConfig' : 'cardConfig', config);
+    renderAll();
+  }
+}
+
+function renderAll(){ renderLoans(); renderCards(); renderTrade(); renderSummary(); }
+
+// ---------- Navigation ----------
+function switchView(view){
+  document.querySelectorAll('.rail-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===view));
+  document.getElementById('view-loans').style.display = view==='loans' ? '' : 'none';
+  document.getElementById('view-cards').style.display = view==='cards' ? '' : 'none';
+  document.getElementById('view-trade').style.display = view==='trade' ? '' : 'none';
+  document.getElementById('view-summary').style.display = view==='summary' ? '' : 'none';
+  if(view==='summary') renderSummary();
+}
+
+// ---------- Dynamic Add Bank ----------
+function openAddBankForm(type){
+  document.getElementById('add-bank-type').value = type;
+  document.getElementById('add-bank-name').value = '';
+  document.getElementById('add-bank-key').value = '';
+  
+  if (type === 'loan') {
+    document.getElementById('add-bank-title').textContent = 'Add Loan';
+    document.getElementById('add-loan-fields').style.display = 'block';
+    ['sanctioned', 'roi', 'emi', 'emisleft'].forEach(f => {
+      document.getElementById(`add-loan-${f}`).value = '';
+    });
+  } else {
+    document.getElementById('add-bank-title').textContent = 'Add Credit Card';
+    document.getElementById('add-loan-fields').style.display = 'none';
+  }
+  
+  document.getElementById('add-bank-overlay').classList.add('show');
+  attachClearButtons();
+}
+async function saveNewBank(){
+  const type = document.getElementById('add-bank-type').value;
+  const label = document.getElementById('add-bank-name').value.trim();
+  const key = document.getElementById('add-bank-key').value.trim().replace(/\s+/g, '').toLowerCase();
+  
+  if(!label || !key) { showToast('Please fill all fields'); return; }
+  
+  const color = colorPalette[Math.floor(Math.random() * colorPalette.length)];
+  
+  if(type === 'loan'){
+    if(loanConfig.find(b=>b.key===key)){ showToast('Key already exists'); return; }
+    loanConfig.push({key, label, color});
+    await setKey('loanConfig', loanConfig);
+    loanDetails[key] = {
+      sanctioned: parseAmt(document.getElementById('add-loan-sanctioned').value),
+      roi: parseAmt(document.getElementById('add-loan-roi').value),
+      emi: parseAmt(document.getElementById('add-loan-emi').value),
+      totalpaid: 0,
+      extrapaid: 0,
+      emispaid: 0,
+      emisleft: parseAmt(document.getElementById('add-loan-emisleft').value),
+    };
+    await setKey('loanDetails', loanDetails);
+  } else {
+    if(cardConfig.find(b=>b.key===key)){ showToast('Key already exists'); return; }
+    cardConfig.push({key, label, color});
+    await setKey('cardConfig', cardConfig);
+  }
+  
+  renderAll();
+  closeModal('add-bank-overlay');
+  showToast('Bank added');
+}
+
+// ---------- Loan details / card limits editing ----------
+let ldTimer, limitTimer;
+function saveLoanDetails(){
+  loanConfig.forEach(b => {
+    loanDetails[b.key] = {
+      sanctioned: parseAmt(document.getElementById(`ld-${b.key}-sanctioned`).value),
+      roi: parseAmt(document.getElementById(`ld-${b.key}-roi`).value),
+      emi: parseAmt(document.getElementById(`ld-${b.key}-emi`).value),
+      totalpaid: parseAmt(document.getElementById(`ld-${b.key}-totalpaid`).value),
+      extrapaid: parseAmt(document.getElementById(`ld-${b.key}-extrapaid`).value),
+      emispaid: parseAmt(document.getElementById(`ld-${b.key}-emispaid`).value),
+      emisleft: parseAmt(document.getElementById(`ld-${b.key}-emisleft`).value),
+    };
+  });
+  
+  clearTimeout(ldTimer);
+  ldTimer = setTimeout(()=> setKey('loanDetails', loanDetails), 500);
+}
+function updateLimit(bankKey, val){
+  cardLimits[bankKey] = parseAmt(val);
+  const last = cards[cards.length-1] || {};
+  
+  clearTimeout(limitTimer);
+  limitTimer = setTimeout(()=> {
+    setKey('cardLimits', cardLimits);
+    renderCards(); // Wait 1 second before re-rendering to prevent losing focus too often
+  }, 1000);
+}
+
+// ---------- Forms (Loans & Cards) ----------
+function populateMonthSelect(selectId, selectedMonth, existingRecords) {
+  const sel = document.getElementById(selectId);
+  let upcoming = getUpcomingMonths(24);
+  
+  if (existingRecords) {
+    const existingMonths = existingRecords.map(r => r.month);
+    upcoming = upcoming.filter(m => !existingMonths.includes(m) || m === selectedMonth);
+  }
+
+  sel.innerHTML = upcoming.map(m => `<option value="${m}">${m}</option>`).join('');
+  if (selectedMonth) {
+    if(!upcoming.includes(selectedMonth)) {
+      sel.innerHTML = `<option value="${selectedMonth}">${selectedMonth}</option>` + sel.innerHTML;
+    }
+    sel.value = selectedMonth;
+  }
+}
+
+function openLoanForm(id){
+  const isEdit = !!id;
+  document.getElementById('loan-modal-title').textContent = isEdit ? 'Edit month' : 'Add month';
+  document.getElementById('loan-id').value = id || '';
+  const r = isEdit ? loans.find(x=>x.id===id) : null;
+  const lastRow = (!isEdit && loans.length) ? loans[loans.length-1] : null;
+  
+  populateMonthSelect('loan-month', r ? r.month : null, loans);
+
+  const grid = document.getElementById('loan-modal-grid');
+  grid.innerHTML = loanConfig.map(b => {
+    let amt = '';
+    if (r) { amt = r[b.key+'Amount'] || 0; }
+    else if (lastRow) { amt = lastRow[b.key+'Amount'] || 0; }
+    
+    const st = r ? (r[b.key+'Status'] || 'PAID') : 'PAID';
+    return `
+      <div class="form-row">
+        <label>${b.label} amount (₹)</label>
+        <input type="text" inputmode="numeric" id="loan-${b.key}-amt" value="${formatWithComma(amt)}" oninput="formatInputComma(this)" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>${b.label} status</label>
+        <select id="loan-${b.key}-status">
+          <option ${st==='PAID'?'selected':''}>PAID</option>
+          <option ${st==='PENDING'?'selected':''}>PENDING</option>
+          <option ${st==='NA'?'selected':''}>NA</option>
+          <option ${st==='-'?'selected':''}>-</option>
+        </select>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('loan-overlay').classList.add('show');
+  attachClearButtons();
+}
+async function saveLoan(){
+  const id = document.getElementById('loan-id').value;
+  const month = document.getElementById('loan-month').value;
+  if(!month){ showToast('Please select a month'); return; }
+  
+  const row = { id: id ? Number(id) : Date.now(), month };
+  loanConfig.forEach(b => {
+    row[b.key+'Amount'] = parseAmt(document.getElementById(`loan-${b.key}-amt`).value);
+    row[b.key+'Status'] = document.getElementById(`loan-${b.key}-status`).value;
+  });
+
+  if(id){ loans = loans.map(x=>x.id===Number(id)?row:x); }
+  else{ 
+    loans.push(row); 
+    loanConfig.forEach(b => {
+      if(row[b.key+'Status'] === 'PAID') {
+        if(loanDetails[b.key]) {
+          let ld = loanDetails[b.key];
+          ld.emispaid = (ld.emispaid || 0) + 1;
+          ld.emisleft = Math.max(0, (ld.emisleft || 0) - 1);
+          ld.totalpaid = (ld.totalpaid || 0) + (ld.emi || 0);
+        }
+      }
+    });
+    await setKey('loanDetails', loanDetails);
+  }
+  await setKey('loans', loans);
+  renderAll();
+  closeModal('loan-overlay');
+  showToast('Saved');
+}
+async function deleteLoan(id){
+  loans = loans.filter(x=>x.id!==id);
+  await setKey('loans', loans);
+  renderAll();
+  showToast('Deleted');
+}
+
+// Card form
+function openCardForm(id){
+  const isEdit = !!id;
+  document.getElementById('card-modal-title').textContent = isEdit ? 'Edit month' : 'Add month';
+  document.getElementById('card-id').value = id || '';
+  const r = isEdit ? cards.find(x=>x.id===id) : null;
+  const lastRow = (!isEdit && cards.length) ? cards[cards.length-1] : null;
+  
+  populateMonthSelect('card-month', r ? r.month : null, cards);
+
+  const grid = document.getElementById('card-modal-grid');
+  grid.innerHTML = cardConfig.map(b => {
+    let amt = '';
+    if (r) { amt = r[b.key] || 0; }
+    else if (lastRow) { amt = lastRow[b.key] || 0; }
+    
+    const st = r ? (r[b.key+'Status'] || 'PAID') : 'PAID';
+    return `
+      <div class="form-row">
+        <label>${b.label} (₹)</label>
+        <input type="text" inputmode="numeric" id="card-${b.key}" value="${formatWithComma(amt)}" oninput="formatInputComma(this)" placeholder="0">
+      </div>
+      <div class="form-row">
+        <label>${b.label} status</label>
+        <select id="card-${b.key}-status">
+          <option ${st==='PAID'?'selected':''}>PAID</option>
+          <option ${st==='PENDING'?'selected':''}>PENDING</option>
+          <option ${st==='NA'?'selected':''}>NA</option>
+          <option ${st==='-'?'selected':''}>-</option>
+        </select>
+      </div>
+    `;
+  }).join('');
+  
+  document.getElementById('card-overlay').classList.add('show');
+  attachClearButtons();
+}
+async function saveCard(){
+  const id = document.getElementById('card-id').value;
+  const month = document.getElementById('card-month').value;
+  if(!month){ showToast('Please select a month'); return; }
+  
+  const row = { id: id ? Number(id) : Date.now(), month };
+  cardConfig.forEach(b => {
+    row[b.key] = parseAmt(document.getElementById(`card-${b.key}`).value);
+    row[b.key+'Status'] = document.getElementById(`card-${b.key}-status`).value;
+  });
+
+  if(id){ cards = cards.map(x=>x.id===Number(id)?row:x); }
+  else{ cards.push(row); }
+  await setKey('cards', cards);
+  renderAll();
+  closeModal('card-overlay');
+  showToast('Saved');
+}
+async function deleteCard(id){
+  cards = cards.filter(x=>x.id!==id);
+  await setKey('cards', cards);
+  renderAll();
+  showToast('Deleted');
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('show'); }
+document.querySelectorAll('.overlay').forEach(o=>{
+  o.addEventListener('click', e=>{ if(e.target===o) o.classList.remove('show'); });
+});
+
+document.addEventListener('keydown', function(e) {
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    syncDataToFile();
+    showToast('Syncing...');
+  }
+});
+
+// ---------- Export / Import ----------
+async function exportData() {
+  const allData = { loanConfig, cardConfig, loans, cards, loanDetails, cardLimits, tradeLoss };
+  const blob = new Blob([JSON.stringify(allData, null, 2)], {type: "application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `ledger_backup_${new Date().toISOString().split('T')[0]}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Export successful');
+}
+
+async function importData(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = async (e) => {
+    try {
+      const data = JSON.parse(e.target.result);
+      if(data.loanConfig) await setKey('loanConfig', data.loanConfig);
+      if(data.cardConfig) await setKey('cardConfig', data.cardConfig);
+      if(data.loans) await setKey('loans', data.loans);
+      if(data.cards) await setKey('cards', data.cards);
+      if(data.loanDetails) await setKey('loanDetails', data.loanDetails);
+      if(data.cardLimits) await setKey('cardLimits', data.cardLimits);
+      if(data.tradeLoss) await setKey('tradeLoss', data.tradeLoss);
+      showToast('Import successful! Reloading...');
+      setTimeout(() => location.reload(), 1000);
+    } catch(err) {
+      showToast('Error: ' + err.message);
+      console.error(err);
+    }
+  };
+  reader.readAsText(file);
+}
+
+// ---------- Local Folder Sync ----------
+let fileHandle = null;
+
+const idbKeyval = {
+  async get(key) {
+    return new Promise((resolve) => {
+      const req = indexedDB.open('ledger-idb', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => {
+        const db = req.result;
+        if(!db.objectStoreNames.contains('handles')) return resolve(null);
+        const tx = db.transaction('handles', 'readonly');
+        const getReq = tx.objectStore('handles').get(key);
+        getReq.onsuccess = () => resolve(getReq.result);
+        getReq.onerror = () => resolve(null);
+      };
+      req.onerror = () => resolve(null);
+    });
+  },
+  async set(key, val) {
+    return new Promise((resolve) => {
+      const req = indexedDB.open('ledger-idb', 1);
+      req.onupgradeneeded = () => req.result.createObjectStore('handles');
+      req.onsuccess = () => {
+        const db = req.result;
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').put(val, key);
+        tx.oncomplete = () => resolve();
+      };
+    });
+  }
+};
+
+async function pickSyncFolder() {
+  if (!window.showDirectoryPicker) { showToast('Not supported in this browser'); return; }
+  try {
+    const dirHandle = await window.showDirectoryPicker();
+    if (await dirHandle.requestPermission({mode:'readwrite'}) !== 'granted') return showToast('Permission denied');
+    
+    fileHandle = await dirHandle.getFileHandle('ledger_data.json', { create: true });
+    await idbKeyval.set('sync_file', fileHandle);
+    
+    const file = await fileHandle.getFile();
+    const text = await file.text();
+    if (text.trim()) {
+      try {
+        const data = JSON.parse(text);
+        if (confirm(`Load ledger from "${dirHandle.name}/ledger_data.json"?`)) {
+          if(data.loanConfig) await setKey('loanConfig', data.loanConfig);
+          if(data.cardConfig) await setKey('cardConfig', data.cardConfig);
+          if(data.loans) await setKey('loans', data.loans);
+          if(data.cards) await setKey('cards', data.cards);
+          if(data.loanDetails) await setKey('loanDetails', data.loanDetails);
+          if(data.cardLimits) await setKey('cardLimits', data.cardLimits);
+          if(data.tradeLoss) await setKey('tradeLoss', data.tradeLoss);
+          showToast('Loaded! Reloading...');
+          setTimeout(() => location.reload(), 1000);
+          return;
+        }
+      } catch(e) { console.warn("Invalid JSON in sync file"); }
+    }
+    await syncDataToFile(); 
+    updateSyncStatus(true);
+  } catch(e) { console.error(e); }
+}
+
+async function syncDataToFile() {
+  if (!fileHandle) return;
+  try {
+    if (await fileHandle.requestPermission({mode:'readwrite'}) !== 'granted') return;
+    const allData = { loanConfig, cardConfig, loans, cards, loanDetails, cardLimits, tradeLoss };
+    const writable = await fileHandle.createWritable();
+    await writable.write(JSON.stringify(allData, null, 2));
+    await writable.close();
+    updateSyncStatus(true);
+  } catch(e) {
+    console.error("Failed to sync", e);
+    updateSyncStatus(false);
+  }
+}
+
+function updateSyncStatus(success = null) {
+  const el = document.getElementById('syncStatus');
+  if(!el) return;
+  if (!fileHandle) {
+    el.textContent = "No sync folder connected";
+    el.style.color = "#8a9089";
+  } else if (success === true) {
+    el.textContent = `Synced: ${new Date().toLocaleTimeString()}`;
+    el.style.color = "var(--emerald)";
+  } else if (success === false) {
+    el.textContent = "Sync failed";
+    el.style.color = "var(--rust)";
+  } else {
+    el.textContent = `Connected: ${fileHandle.name}`;
+    el.style.color = "var(--navy-2)";
+  }
+}
+
+async function checkSyncHandle() {
+  try {
+    const handle = await idbKeyval.get('sync_file');
+    if (handle) {
+      fileHandle = handle;
+      if (await fileHandle.queryPermission({mode:'readwrite'}) === 'granted') {
+        updateSyncStatus(true);
+      } else {
+        updateSyncStatus();
+      }
+    }
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+// ---------- Init ----------
+(async function init(){
+  await loadData();
+  await checkSyncHandle();
+  renderAll();
+})();
+</script>
+</body>
+</html>

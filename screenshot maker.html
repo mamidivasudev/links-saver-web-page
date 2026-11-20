@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Screenshot Reviewer</title>
+
+<style>
+body{
+    font-family: Arial, sans-serif;
+    margin:20px;
+}
+
+.toolbar{
+    margin-bottom:15px;
+}
+
+button{
+    padding:8px 15px;
+    margin-right:10px;
+    cursor:pointer;
+}
+
+canvas{
+    border:1px solid #999;
+    cursor:crosshair;
+    max-width:100%;
+}
+</style>
+</head>
+<body>
+
+<h2>Screenshot Reviewer</h2>
+<p>
+Win + Shift + S → Ctrl + V → Drag Rectangle → Enter Label
+</p>
+
+<div class="toolbar">
+    <button onclick="copyImage()">📋 Copy Image</button>
+    <button onclick="saveImage()">💾 Save PNG</button>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+let screenshot = null;
+let annotations = [];
+
+let drawing = false;
+let startX = 0;
+let startY = 0;
+let currentRect = null;
+
+let draggingLabel = false;
+let draggedAnnotation = null;
+let dragOffsetX = 0;
+let dragOffsetY = 0;
+
+document.addEventListener("keydown",(e)=>{
+
+    if(e.ctrlKey && e.key.toLowerCase()==="z"){
+
+        if(annotations.length){
+            annotations.pop();
+            redraw();
+        }
+    }
+});
+
+document.addEventListener("paste",(e)=>{
+
+    const items = e.clipboardData.items;
+
+    for(let item of items){
+
+        if(item.type.indexOf("image") !== -1){
+
+            const file = item.getAsFile();
+            const reader = new FileReader();
+
+            reader.onload = function(event){
+
+                const img = new Image();
+
+                img.onload = function(){
+
+                    screenshot = img;
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    annotations = [];
+
+                    redraw();
+                };
+
+                img.src = event.target.result;
+            };
+
+            reader.readAsDataURL(file);
+        }
+    }
+});
+
+canvas.addEventListener("mousedown",(e)=>{
+
+    const mx = e.offsetX;
+    const my = e.offsetY;
+
+    for(let ann of annotations){
+
+        ctx.font = "16px Arial";
+
+        const width =
+            ctx.measureText(ann.label).width + 20;
+
+        const height = 35;
+
+        if(
+            mx >= ann.labelX-10 &&
+            mx <= ann.labelX-10+width &&
+            my >= ann.labelY-20 &&
+            my <= ann.labelY-20+height
+        ){
+
+            draggingLabel = true;
+            draggedAnnotation = ann;
+
+            dragOffsetX = mx - ann.labelX;
+            dragOffsetY = my - ann.labelY;
+
+            return;
+        }
+    }
+
+    if(!screenshot) return;
+
+    drawing = true;
+
+    startX = mx;
+    startY = my;
+});
+
+canvas.addEventListener("mousemove",(e)=>{
+
+    const mx = e.offsetX;
+    const my = e.offsetY;
+
+    if(draggingLabel){
+
+        draggedAnnotation.labelX =
+            mx - dragOffsetX;
+
+        draggedAnnotation.labelY =
+            my - dragOffsetY;
+
+        redraw();
+        return;
+    }
+
+    if(!drawing) return;
+
+    currentRect = {
+        x:startX,
+        y:startY,
+        w:mx-startX,
+        h:my-startY
+    };
+
+    redraw();
+});
+
+canvas.addEventListener("mouseup",(e)=>{
+
+    if(draggingLabel){
+
+        draggingLabel = false;
+        draggedAnnotation = null;
+        return;
+    }
+
+    if(!drawing) return;
+
+    drawing = false;
+
+    const endX = e.offsetX;
+    const endY = e.offsetY;
+
+    const rect = {
+        x:Math.min(startX,endX),
+        y:Math.min(startY,endY),
+        w:Math.abs(endX-startX),
+        h:Math.abs(endY-startY)
+    };
+
+    if(rect.w < 5 || rect.h < 5){
+
+        currentRect = null;
+        redraw();
+        return;
+    }
+
+    const label = prompt("Enter Label");
+
+    if(label){
+
+        annotations.push({
+
+            rect:rect,
+
+            label:label,
+
+            labelX:rect.x + rect.w + 50,
+
+            labelY:rect.y + 25
+        });
+    }
+
+    currentRect = null;
+
+    redraw();
+});
+
+canvas.addEventListener("contextmenu",(e)=>{
+
+    e.preventDefault();
+
+    const mx = e.offsetX;
+    const my = e.offsetY;
+
+    for(let i=0;i<annotations.length;i++){
+
+        const ann = annotations[i];
+
+        const width =
+            ctx.measureText(ann.label).width + 20;
+
+        const height = 35;
+
+        if(
+            mx >= ann.labelX-10 &&
+            mx <= ann.labelX-10+width &&
+            my >= ann.labelY-20 &&
+            my <= ann.labelY-20+height
+        ){
+
+            if(confirm("Delete Annotation?")){
+
+                annotations.splice(i,1);
+
+                redraw();
+            }
+
+            break;
+        }
+    }
+});
+
+function drawArrow(fromX,fromY,toX,toY){
+
+    const headlen = 12;
+
+    const angle =
+        Math.atan2(toY-fromY,toX-fromX);
+
+    ctx.beginPath();
+
+    ctx.moveTo(fromX,fromY);
+    ctx.lineTo(toX,toY);
+
+    ctx.lineTo(
+        toX-headlen*Math.cos(angle-Math.PI/6),
+        toY-headlen*Math.sin(angle-Math.PI/6)
+    );
+
+    ctx.moveTo(toX,toY);
+
+    ctx.lineTo(
+        toX-headlen*Math.cos(angle+Math.PI/6),
+        toY-headlen*Math.sin(angle+Math.PI/6)
+    );
+
+    ctx.stroke();
+}
+
+function redraw(){
+
+    if(!screenshot) return;
+
+    ctx.clearRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+    ctx.drawImage(
+        screenshot,
+        0,
+        0
+    );
+
+    ctx.lineWidth = 3;
+
+    annotations.forEach((item,index)=>{
+
+        const r = item.rect;
+
+        ctx.strokeStyle = "red";
+
+        ctx.strokeRect(
+            r.x,
+            r.y,
+            r.w,
+            r.h
+        );
+
+        const labelText =
+            (index+1)+". "+item.label;
+
+        ctx.font = "16px Arial";
+
+        const textWidth =
+            ctx.measureText(labelText).width;
+
+        const boxWidth =
+            textWidth + 20;
+
+        const boxHeight = 35;
+
+        const labelX = item.labelX;
+        const labelY = item.labelY;
+
+        ctx.fillStyle = "white";
+
+        ctx.fillRect(
+            labelX-10,
+            labelY-20,
+            boxWidth,
+            boxHeight
+        );
+
+        ctx.strokeRect(
+            labelX-10,
+            labelY-20,
+            boxWidth,
+            boxHeight
+        );
+
+        drawArrow(
+            r.x+r.w,
+            r.y+r.h/2,
+            labelX-10,
+            labelY-5
+        );
+
+        ctx.fillStyle="red";
+
+        ctx.fillText(
+            labelText,
+            labelX,
+            labelY
+        );
+    });
+
+    if(currentRect){
+
+        ctx.strokeStyle="red";
+
+        ctx.strokeRect(
+            currentRect.x,
+            currentRect.y,
+            currentRect.w,
+            currentRect.h
+        );
+    }
+}
+
+async function copyImage(){
+
+    canvas.toBlob(async(blob)=>{
+
+        try{
+
+            await navigator.clipboard.write([
+                new ClipboardItem({
+                    "image/png":blob
+                })
+            ]);
+
+            alert(
+                "Annotated image copied to clipboard!"
+            );
+
+        }catch(err){
+
+            alert(
+                "Clipboard copy failed.\nUse Save PNG."
+            );
+        }
+
+    });
+}
+
+function saveImage(){
+
+    const link =
+        document.createElement("a");
+
+    link.download =
+        "annotated_screenshot.png";
+
+    link.href =
+        canvas.toDataURL("image/png");
+
+    link.click();
+}
+
+</script>
+
+</body>
+</html>
